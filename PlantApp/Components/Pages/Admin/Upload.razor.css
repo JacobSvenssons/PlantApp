@@ -1,0 +1,127 @@
+.upload-page {
+    min-height: calc(100vh - 3.5rem);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.upload-card {
+    width: min(560px, 100%);
+}
+
+.upload-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.upload-card__titel {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.upload-card__subtitel {
+    margin: 0.25rem 0 1.75rem;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+}
+
+.upload-card__subtitel code {
+    background: rgba(31, 77, 46, 0.08);
+    padding: 0.1rem 0.35rem;
+    border-radius: 6px;
+    font-size: 0.85em;
+}
+
+.upload-falt {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 1.5rem;
+}
+
+.upload-falt label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-text-muted);
+}
+
+.upload-input {
+    padding: 0.7rem 0.85rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: #fff;
+    font-size: 1rem;
+    color: var(--color-text);
+}
+
+.upload-input:focus {
+    outline: none;
+    border-color: var(--color-forest-light);
+    box-shadow: 0 0 0 3px rgba(47, 107, 64, 0.18);
+}
+
+/* Filväljare som en snygg "drop zone" */
+.upload-drop {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 96px;
+    padding: 1rem;
+    border: 2px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    background: rgba(31, 77, 46, 0.03);
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.upload-drop:hover {
+    border-color: var(--color-forest-light);
+    background: rgba(31, 77, 46, 0.06);
+}
+
+/* Dölj den råa InputFile-inputen men behåll den klickbar över hela ytan */
+.upload-drop ::deep input[type="file"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.upload-drop__text {
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+    pointer-events: none;
+}
+
+.upload-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.upload-melding {
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 1.25rem;
+    font-size: 0.95rem;
+}
+
+.upload-melding--ok {
+    background: #e7f6ec;
+    color: #166016;
+}
+
+.upload-melding--fel {
+    background: #fbe9e9;
+    color: #9b1c1c;
+}

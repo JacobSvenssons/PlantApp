@@ -1,0 +1,40 @@
+﻿@inherits LayoutComponentBase
+
+@Body
+
+<nav class="app-nav" aria-label="Huvudnavigering">
+    <NavLink class="app-nav__link" href="/" Match="NavLinkMatch.All">
+        <span class="app-nav__ikon" aria-hidden="true">🌲</span>
+        <span class="app-nav__text">Start</span>
+    </NavLink>
+
+    <AuthorizeView Roles="Admin">
+        <NavLink class="app-nav__link" href="/admin/upload">
+            <span class="app-nav__ikon" aria-hidden="true">📤</span>
+            <span class="app-nav__text">Admin</span>
+        </NavLink>
+    </AuthorizeView>
+
+    <AuthorizeView>
+        <Authorized>
+            <form class="app-nav__form" action="/logout" method="post">
+                <button type="submit" class="app-nav__link app-nav__link--knapp" title="Logga ut @context.User.Identity?.Name">
+                    <span class="app-nav__ikon" aria-hidden="true">🚪</span>
+                    <span class="app-nav__text">Logga ut</span>
+                </button>
+            </form>
+        </Authorized>
+        <NotAuthorized>
+            <NavLink class="app-nav__link" href="/login">
+                <span class="app-nav__ikon" aria-hidden="true">🔑</span>
+                <span class="app-nav__text">Logga in</span>
+            </NavLink>
+        </NotAuthorized>
+    </AuthorizeView>
+</nav>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>

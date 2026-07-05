@@ -1,0 +1,101 @@
+@page "/login"
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using PlantApp.Services
+@inject DemoUserStore UserStore
+@inject NavigationManager NavigationManager
+
+<PageTitle>PlantApp – Logga in</PageTitle>
+
+<div class="login-page">
+	<div class="login-card card-soft">
+		<div class="login-card__brand">
+			<span class="login-card__logo" aria-hidden="true">🌲</span>
+			<div>
+				<h1 class="login-card__titel">Logga in</h1>
+				<p class="login-card__subtitel">Ange användarnamn och lösenord för att fortsätta.</p>
+			</div>
+		</div>
+
+		<EditForm Model="Input" method="post" OnValidSubmit="LoginAsync" FormName="login">
+			<DataAnnotationsValidator />
+
+			@if (_errorMessage is not null)
+			{
+				<div class="login-melding login-melding--fel">@_errorMessage</div>
+			}
+
+			<div class="login-falt">
+				<label for="anvandarnamn">Användarnamn</label>
+				<InputText id="anvandarnamn" class="login-input" @bind-Value="Input.UserName"
+						   autocomplete="username" />
+				<ValidationMessage For="() => Input.UserName" />
+			</div>
+
+			<div class="login-falt">
+				<label for="losenord">Lösenord</label>
+				<InputText id="losenord" type="password" class="login-input" @bind-Value="Input.Password"
+						   autocomplete="current-password" />
+				<ValidationMessage For="() => Input.Password" />
+			</div>
+
+			<button type="submit" class="btn-pill login-knapp">Logga in</button>
+		</EditForm>
+
+		<div class="login-demo">
+			<span class="login-demo__rubrik">Demokonton</span>
+			<ul class="login-demo__lista">
+				<li><code>admin</code> / <code>admin123</code> – Admin</li>
+				<li><code>plantbas</code> / <code>plantbas123</code> – Plantbas</li>
+				<li><code>plantsattare</code> / <code>plantor123</code> – Plantsättare</li>
+			</ul>
+		</div>
+	</div>
+</div>
+
+@code {
+	[CascadingParameter]
+	private HttpContext HttpContext { get; set; } = default!;
+
+	[SupplyParameterFromForm]
+	private LoginInput Input { get; set; } = new();
+
+	[SupplyParameterFromQuery]
+	private string? ReturnUrl { get; set; }
+
+	private string? _errorMessage;
+
+	private async Task LoginAsync()
+	{
+		var user = UserStore.Validate(Input.UserName, Input.Password);
+		if (user is null)
+		{
+			_errorMessage = "Fel användarnamn eller lösenord.";
+			return;
+		}
+
+		var claims = new List<Claim>
+		{
+			new(ClaimTypes.Name, user.DisplayName),
+			new(ClaimTypes.Role, user.Role)
+		};
+
+		var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+		var principal = new ClaimsPrincipal(identity);
+
+		await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+		var target = string.IsNullOrWhiteSpace(ReturnUrl) ? "/" : $"/{ReturnUrl.TrimStart('/')}";
+		NavigationManager.NavigateTo(target);
+	}
+
+	private sealed class LoginInput
+	{
+		[System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Ange användarnamn.")]
+		public string UserName { get; set; } = "";
+
+		[System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Ange lösenord.")]
+		public string Password { get; set; } = "";
+	}
+}

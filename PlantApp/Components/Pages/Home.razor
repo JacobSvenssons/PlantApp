@@ -1,0 +1,179 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@using System.Net.Http.Json
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>PlantApp – Välj trakt</PageTitle>
+
+<div class="start-page">
+    <div class="start-card card-soft">
+        <div class="start-card__brand">
+            <span class="start-card__logo" aria-hidden="true">🌲</span>
+            <div>
+                <h1 class="start-card__titel">PlantApp</h1>
+                <p class="start-card__subtitel">Välj en trakt för att öppna planteringskartan.</p>
+            </div>
+        </div>
+
+        @if (_loadError is not null)
+        {
+            <div class="start-melding start-melding--fel">@_loadError</div>
+        }
+        else if (_trakter is null)
+        {
+            <div class="start-melding">Laddar trakter…</div>
+        }
+        else if (_trakter.Count == 0)
+        {
+            <div class="start-melding">
+                Inga trakter finns ännu. Ladda upp en shapefil på
+                <a href="/admin/upload">adminsidan</a>.
+            </div>
+        }
+        else
+        {
+            <div class="start-falt">
+                <label for="trakt-val">Trakt</label>
+                <select id="trakt-val" class="start-select" @bind="_selectedTraktId" @bind:after="OnTraktChanged">
+                    <option value="0" disabled>– Välj trakt –</option>
+                    @foreach (var trakt in _trakter)
+                    {
+                        <option value="@trakt.Id">@trakt.Namn (@trakt.AntalDelomraden delområden)</option>
+                    }
+                </select>
+            </div>
+
+            @if (_laddarStatistik)
+            {
+                <div class="start-melding">Laddar statistik…</div>
+            }
+            else if (_statistik is not null)
+            {
+                <div class="dashboard">
+                    <div class="dashboard__header">
+                        <h2 class="dashboard__titel">@_statistik.Namn</h2>
+                        <span class="dashboard__badge">@_statistik.AntalDelomraden delområden</span>
+                    </div>
+
+                    <div class="dashboard__progress">
+                        <div class="dashboard__progress-topp">
+                            <span class="dashboard__progress-label">Färdigplanterat</span>
+                            <span class="dashboard__progress-varde">@_statistik.ProcentKlar.ToString("0.#") %</span>
+                        </div>
+                        <div class="dashboard__bar" role="progressbar"
+                             aria-valuenow="@((int)Math.Round(_statistik.ProcentKlar))" aria-valuemin="0" aria-valuemax="100">
+                            <div class="dashboard__bar-fyll" style="width:@_statistik.ProcentKlar.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                        </div>
+                        <span class="dashboard__progress-detalj">
+                            @_statistik.KlarAreal.ToString("0.##") av @_statistik.TotalAreal.ToString("0.##") ha klara
+                        </span>
+                    </div>
+
+                    <div class="dashboard__kort">
+                        <div class="stat-kort">
+                            <span class="stat-kort__ikon" aria-hidden="true">🌱</span>
+                            <div class="stat-kort__varde">@_statistik.TotaltAntalPlantor.ToString("N0")</div>
+                            <div class="stat-kort__etikett">Satta plantor</div>
+                        </div>
+                        <div class="stat-kort">
+                            <span class="stat-kort__ikon" aria-hidden="true">✅</span>
+                            <div class="stat-kort__varde">@_statistik.AntalKlara / @_statistik.AntalDelomraden</div>
+                            <div class="stat-kort__etikett">Klara delområden</div>
+                        </div>
+                        <div class="stat-kort">
+                            <span class="stat-kort__ikon" aria-hidden="true">📐</span>
+                            <div class="stat-kort__varde">@_statistik.TotalAreal.ToString("0.##") ha</div>
+                            <div class="stat-kort__etikett">Total areal</div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="start-actions">
+                <button class="btn-pill" disabled="@(_selectedTraktId <= 0)" @onclick="OpenKarta">
+                    Öppna karta
+                </button>
+                <a class="btn-pill btn-pill--ghost" href="/admin/upload">Ladda upp trakt</a>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<TraktListItem>? _trakter;
+    private int _selectedTraktId;
+    private string? _loadError;
+
+    private TraktStatistik? _statistik;
+    private bool _laddarStatistik;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            _trakter = await client.GetFromJsonAsync<List<TraktListItem>>(
+                $"{NavigationManager.BaseUri}api/trakt");
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Kunde inte hämta trakter: {ex.Message}";
+        }
+    }
+
+    private async Task OnTraktChanged()
+    {
+        _statistik = null;
+
+        if (_selectedTraktId <= 0)
+        {
+            return;
+        }
+
+        _laddarStatistik = true;
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            _statistik = await client.GetFromJsonAsync<TraktStatistik>(
+                $"{NavigationManager.BaseUri}api/trakt/{_selectedTraktId}/statistik");
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Kunde inte hämta statistik: {ex.Message}";
+        }
+        finally
+        {
+            _laddarStatistik = false;
+        }
+    }
+
+    private void OpenKarta()
+    {
+        if (_selectedTraktId > 0)
+        {
+            NavigationManager.NavigateTo($"/trakt/{_selectedTraktId}");
+        }
+    }
+
+    private sealed class TraktListItem
+    {
+        public int Id { get; set; }
+        public string Namn { get; set; } = "";
+        public string? Status { get; set; }
+        public DateTime SkapadDatum { get; set; }
+        public int AntalDelomraden { get; set; }
+    }
+
+    private sealed class TraktStatistik
+    {
+        public int TraktId { get; set; }
+        public string Namn { get; set; } = "";
+        public int AntalDelomraden { get; set; }
+        public double TotalAreal { get; set; }
+        public double KlarAreal { get; set; }
+        public double ProcentKlar { get; set; }
+        public int AntalKlara { get; set; }
+        public int TotaltAntalPlantor { get; set; }
+    }
+}

@@ -1,0 +1,138 @@
+@page "/admin/upload"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using System.Net.Http.Headers
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>PlantApp – Ladda upp trakt</PageTitle>
+
+<div class="upload-page">
+	<div class="upload-card card-soft">
+		<div class="upload-card__header">
+			<h1 class="upload-card__titel">Ladda upp trakt</h1>
+			<a class="btn-pill btn-pill--ghost" href="/">Till start</a>
+		</div>
+		<p class="upload-card__subtitel">
+			Ladda upp en zippad shapefil (<code>.shp</code>, <code>.shx</code>, <code>.dbf</code>) för att skapa en ny trakt med delområden – det ger exakt geometri och areal.
+			GeoPDF-import (<code>.pdf</code>) är tillfälligt pausad eftersom PDF:ens begränsningslinjer inte sluter sig exakt och ger felaktig areal.
+		</p>
+
+		<div class="upload-falt">
+			<label for="trakt-namn">Traktnamn (valfritt)</label>
+			<input id="trakt-namn" class="upload-input" @bind="_traktNamn"
+				   placeholder="Lämna tomt för att använda filnamnet" />
+		</div>
+
+		<div class="upload-falt">
+			<label>Shapefil (zip)</label>
+			<label class="upload-drop">
+				<InputFile OnChange="OnFileSelected" accept=".zip,.pdf" />
+				<span class="upload-drop__text">
+					@(_selectedFile is null ? "Klicka för att välja en .zip-fil (shapefil)" : _selectedFile.Name)
+				</span>
+			</label>
+		</div>
+
+		@if (_message is not null)
+		{
+			<div class="upload-melding @(_isError ? "upload-melding--fel" : "upload-melding--ok")">
+				@_message
+			</div>
+		}
+
+		<div class="upload-actions">
+			<button class="btn-pill" disabled="@(_selectedFile is null || _uploading)" @onclick="UploadAsync">
+				@(_uploading ? "Laddar upp…" : "Ladda upp")
+			</button>
+			@if (_createdTraktId is not null)
+			{
+				<a class="btn-pill btn-pill--ghost" href="@($"/trakt/{_createdTraktId}")">Öppna karta</a>
+			}
+		</div>
+	</div>
+</div>
+
+@code {
+	private const long MaxUploadBytes = 100L * 1024 * 1024; // 100 MB
+
+	private IBrowserFile? _selectedFile;
+	private string? _traktNamn;
+	private bool _uploading;
+	private bool _isError;
+	private string? _message;
+	private int? _createdTraktId;
+
+	private void OnFileSelected(InputFileChangeEventArgs e)
+	{
+		_selectedFile = e.File;
+		_message = null;
+		_isError = false;
+		_createdTraktId = null;
+	}
+
+	private async Task UploadAsync()
+	{
+		if (_selectedFile is null)
+		{
+			return;
+		}
+
+		_uploading = true;
+		_message = null;
+		_isError = false;
+		_createdTraktId = null;
+
+		try
+		{
+			using var content = new MultipartFormDataContent();
+
+			var fileContent = new StreamContent(_selectedFile.OpenReadStream(MaxUploadBytes));
+			var contentType = _selectedFile.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)
+				? "application/pdf"
+				: "application/zip";
+			fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+			content.Add(fileContent, "file", _selectedFile.Name);
+
+			if (!string.IsNullOrWhiteSpace(_traktNamn))
+			{
+				content.Add(new StringContent(_traktNamn.Trim()), "namn");
+			}
+
+			var client = HttpClientFactory.CreateClient();
+			var response = await client.PostAsync($"{NavigationManager.BaseUri}api/trakt/upload", content);
+
+			if (response.IsSuccessStatusCode)
+			{
+				var result = await response.Content.ReadFromJsonAsync<UploadResult>();
+				_createdTraktId = result?.Id;
+				_message = result is not null
+					? $"Trakten \"{result.Namn}\" skapades med {result.AntalDelomraden} delområden."
+					: "Uppladdningen lyckades.";
+			}
+			else
+			{
+				_isError = true;
+				var detail = await response.Content.ReadAsStringAsync();
+				_message = $"Uppladdningen misslyckades (HTTP {(int)response.StatusCode}). {detail}";
+			}
+		}
+		catch (Exception ex)
+		{
+			_isError = true;
+			_message = $"Fel vid uppladdning: {ex.Message}";
+		}
+		finally
+		{
+			_uploading = false;
+		}
+	}
+
+	private sealed class UploadResult
+	{
+		public int Id { get; set; }
+		public string? Namn { get; set; }
+		public string? Status { get; set; }
+		public int AntalDelomraden { get; set; }
+	}
+}

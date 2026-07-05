@@ -1,0 +1,267 @@
+.trakt-karta-page {
+    position: relative;
+    height: calc(100vh - 3.5rem);
+    width: 100%;
+    overflow: hidden;
+}
+
+.trakt-karta {
+    height: 100%;
+    width: 100%;
+    background: #1a1a1a;
+}
+
+.karta-status {
+    position: absolute;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+.karta-status--fel {
+    background: rgba(150, 30, 30, 0.9);
+}
+
+/* Bottom sheet (rapportering) – glider upp från botten */
+.rapport-panel {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    z-index: 950;
+    width: min(620px, 100%);
+    background: var(--color-surface, #ffffff);
+    border-radius: 28px 28px 0 0;
+    box-shadow: 0 -8px 40px rgba(22, 58, 34, 0.22);
+    padding: 1.5rem 1.75rem 1.75rem;
+    animation: sheet-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Liten "greppindikator" högst upp på arket */
+.rapport-panel::before {
+    content: "";
+    position: absolute;
+    top: 0.6rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 42px;
+    height: 5px;
+    border-radius: 999px;
+    background: #d7ded3;
+}
+
+@keyframes sheet-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 100%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+.rapport-panel__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.rapport-panel__titel {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #1f2933;
+}
+
+.rapport-panel__subtitel {
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.rapport-panel__stang {
+    border: none;
+    background: transparent;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0 0.25rem;
+}
+
+.rapport-panel__stang:hover {
+    color: #4b5563;
+}
+
+.rapport-panel__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.falt {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+}
+
+.falt label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #4b5563;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.falt__varde {
+    font-size: 1.05rem;
+    color: #111827;
+    font-weight: 600;
+}
+
+.falt__varde--tom {
+    color: #9ca3af;
+    font-weight: 400;
+    font-style: italic;
+}
+
+.falt__input {
+    padding: 0.5rem 0.65rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+
+.falt__input:focus {
+    outline: none;
+    border-color: var(--color-forest-light, #2f6b40);
+    box-shadow: 0 0 0 3px rgba(47, 107, 64, 0.18);
+}
+
+/* Statusväljare som checklista (kryssrutor) */
+.status-checklista {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.checklista-rad {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--color-border, #dfe5db);
+    border-radius: 14px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: normal;
+    color: #374151;
+    transition: border-color 0.12s, background 0.12s;
+}
+
+.checklista-rad:hover {
+    background: rgba(31, 77, 46, 0.04);
+}
+
+.checklista-rad input[type="checkbox"] {
+    width: 1.2rem;
+    height: 1.2rem;
+    accent-color: var(--color-forest, #1f4d2e);
+    cursor: pointer;
+}
+
+.checklista-rad:has(input:checked) {
+    border-color: var(--color-forest-light, #2f6b40);
+    background: rgba(31, 77, 46, 0.07);
+}
+
+.checklista-rad__prick {
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    flex: none;
+}
+
+.checklista-rad__prick--paborjad {
+    background: #E2B13C;
+}
+
+.checklista-rad__prick--klar {
+    background: #228B22;
+}
+
+.checklista-rad__text {
+    flex: 1;
+}
+
+/* Meddelanden */
+.rapport-panel__meddelande {
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+.rapport-panel__meddelande--ok {
+    background: #e7f6ec;
+    color: #166016;
+}
+
+.rapport-panel__meddelande--fel {
+    background: #fbe9e9;
+    color: #9b1c1c;
+}
+
+/* Knappar */
+.rapport-panel__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.knapp {
+    padding: 0.6rem 1.5rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.knapp:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.knapp--primar {
+    background: var(--color-forest, #1f4d2e);
+    color: #fff;
+}
+
+.knapp--primar:not(:disabled):hover {
+    background: var(--color-forest-dark, #163a22);
+}
+
+.knapp--sekundar {
+    background: #fff;
+    color: #4b5563;
+    border-color: var(--color-border, #d1d5db);
+}
+
+.knapp--sekundar:not(:disabled):hover {
+    background: #f3f4f6;
+}

@@ -1,0 +1,295 @@
+@page "/trakt/{TraktId:int}"
+@rendermode InteractiveServer
+@using System.Net.Http.Json
+@using PlantApp.Dtos
+@using PlantApp.Models
+@inject IJSRuntime JS
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@implements IAsyncDisposable
+
+<PageTitle>Trakt @TraktId</PageTitle>
+
+<div class="trakt-karta-page">
+	<div id="trakt-karta" class="trakt-karta"></div>
+
+	@if (_loadError is not null)
+	{
+		<div class="karta-status karta-status--fel">@_loadError</div>
+	}
+	else if (!_mapReady)
+	{
+		<div class="karta-status">Laddar karta…</div>
+	}
+
+	@if (_selected is not null)
+	{
+		<div class="rapport-panel" role="dialog" aria-modal="false" aria-label="Rapportera delområde">
+			<div class="rapport-panel__header">
+				<div>
+					<h2 class="rapport-panel__titel">Delområde #@_selected.Id</h2>
+					<span class="rapport-panel__subtitel">Trakt @_selected.TraktId</span>
+				</div>
+				<button type="button" class="rapport-panel__stang" title="Stäng" @onclick="ClosePanel">&times;</button>
+			</div>
+
+			<div class="rapport-panel__grid">
+				<div class="falt">
+					<label>Areal</label>
+					<div class="falt__varde">@_selected.Areal.ToString("0.##") ha</div>
+				</div>
+				<div class="falt">
+					<label>Trädsort</label>
+					@if (string.IsNullOrWhiteSpace(_selected.Tradsort))
+					{
+						<div class="falt__varde falt__varde--tom">Ej angiven</div>
+					}
+					else
+					{
+						<div class="falt__varde">@_selected.Tradsort</div>
+					}
+				</div>
+			</div>
+
+			<div class="falt">
+				<label>Status</label>
+				<div class="status-checklista">
+					<label class="checklista-rad">
+						<input type="checkbox" checked="@_paborjad" @onchange="OnPaborjadChanged" />
+						<span class="checklista-rad__prick checklista-rad__prick--paborjad"></span>
+						<span class="checklista-rad__text">Påbörja område</span>
+					</label>
+					<label class="checklista-rad">
+						<input type="checkbox" checked="@_klar" @onchange="OnKlarChanged" />
+						<span class="checklista-rad__prick checklista-rad__prick--klar"></span>
+						<span class="checklista-rad__text">Markera som klar</span>
+					</label>
+				</div>
+			</div>
+
+			<div class="rapport-panel__grid">
+				<div class="falt">
+					<label for="antal-plantor">Antal plantor</label>
+					<input id="antal-plantor" type="number" min="0" class="falt__input"
+						   @bind="_antalPlantor" @bind:event="oninput" />
+				</div>
+				<div class="falt">
+					<label for="antal-plantor-provyta">Antal plantor provyta</label>
+					<input id="antal-plantor-provyta" type="number" min="0" class="falt__input"
+						   @bind="_antalPlantorProvyta" @bind:event="oninput" />
+				</div>
+			</div>
+
+			@if (_saveMessage is not null)
+			{
+				<div class="rapport-panel__meddelande @(_saveError ? "rapport-panel__meddelande--fel" : "rapport-panel__meddelande--ok")">
+					@_saveMessage
+				</div>
+			}
+
+			<div class="rapport-panel__actions">
+				<button type="button" class="knapp knapp--sekundar" @onclick="ClosePanel" disabled="@_saving">Avbryt</button>
+				<button type="button" class="knapp knapp--primar" @onclick="SaveAsync" disabled="@_saving">
+					@(_saving ? "Sparar…" : "Spara")
+				</button>
+			</div>
+		</div>
+	}
+</div>
+
+@code {
+	[Parameter]
+	public int TraktId { get; set; }
+
+	private IJSObjectReference? _module;
+	private DotNetObjectReference<TraktKarta>? _selfRef;
+
+	private bool _mapReady;
+	private string? _loadError;
+
+	private FeatureProperties? _selected;
+	private bool _paborjad;
+	private bool _klar;
+	private int? _antalPlantor;
+	private int? _antalPlantorProvyta;
+
+	private bool _saving;
+	private bool _saveError;
+	private string? _saveMessage;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!firstRender)
+		{
+			return;
+		}
+
+		try
+		{
+			_module = await JS.InvokeAsync<IJSObjectReference>(
+				"import", "./Components/Pages/TraktKarta.razor.js");
+			_selfRef = DotNetObjectReference.Create(this);
+
+			// Hämta GeoJSON (WGS84) från vårt eget API via HttpClient.
+			var client = HttpClientFactory.CreateClient();
+			var geoJson = await client.GetStringAsync(
+				$"{NavigationManager.BaseUri}api/trakt/{TraktId}/geojson");
+
+			await _module.InvokeVoidAsync("initMap", "trakt-karta", geoJson, _selfRef);
+
+			_mapReady = true;
+		}
+		catch (Exception ex)
+		{
+			_loadError = $"Kunde inte ladda kartan: {ex.Message}";
+		}
+
+		StateHasChanged();
+	}
+
+	/// <summary>
+	/// Anropas från JavaScript när användaren klickar på en ruta i kartan.
+	/// </summary>
+	[JSInvokable]
+	public Task OnFeatureClicked(FeatureProperties properties)
+	{
+		_selected = properties;
+
+		var status = Enum.TryParse<DelOmradeStatus>(properties.Status, ignoreCase: true, out var parsed)
+			? parsed
+			: DelOmradeStatus.EjPaborjad;
+		_klar = status == DelOmradeStatus.Klar;
+		_paborjad = status is DelOmradeStatus.Paborjad or DelOmradeStatus.Klar;
+
+		_antalPlantor = properties.AntalPlantor;
+		_antalPlantorProvyta = properties.AntalPlantorProvyta;
+		_saveMessage = null;
+		_saveError = false;
+
+		return InvokeAsync(StateHasChanged);
+	}
+
+	// Kryssrutornas kaskadlogik: "Klar" förutsätter "Påbörjad".
+	private void OnPaborjadChanged(ChangeEventArgs e)
+	{
+		_paborjad = (bool)(e.Value ?? false);
+		if (!_paborjad)
+		{
+			// Bockar man ur "Påbörjad" kan området inte vara "Klart".
+			_klar = false;
+		}
+	}
+
+	private void OnKlarChanged(ChangeEventArgs e)
+	{
+		_klar = (bool)(e.Value ?? false);
+		if (_klar)
+		{
+			// "Klar" innebär automatiskt "Påbörjad".
+			_paborjad = true;
+		}
+	}
+
+	private DelOmradeStatus CurrentStatus =>
+		_klar ? DelOmradeStatus.Klar
+		: _paborjad ? DelOmradeStatus.Paborjad
+		: DelOmradeStatus.EjPaborjad;
+
+	private async Task SaveAsync()
+	{
+		if (_selected is null)
+		{
+			return;
+		}
+
+		if (_selected.Id <= 0)
+		{
+			_saveError = true;
+			_saveMessage = "Kunde inte spara: delområdet saknar giltigt id.";
+			return;
+		}
+
+		_saving = true;
+		_saveMessage = null;
+		_saveError = false;
+
+		try
+		{
+			var status = CurrentStatus;
+			var dto = new DelOmradeUpdateDto
+			{
+				Status = status,
+				AntalPlantor = _antalPlantor,
+				AntalPlantorProvyta = _antalPlantorProvyta
+			};
+
+			var client = HttpClientFactory.CreateClient();
+			var response = await client.PutAsJsonAsync(
+				$"{NavigationManager.BaseUri}api/trakt/delomrade/{_selected.Id}", dto);
+
+			if (response.IsSuccessStatusCode)
+			{
+				if (_module is not null)
+				{
+					// Färglägg om rutan direkt utifrån ny status.
+					await _module.InvokeVoidAsync("updateFeatureStatus", _selected.Id, (int)status);
+				}
+
+				_saveMessage = "Sparat.";
+			}
+			else
+			{
+				_saveError = true;
+				_saveMessage = $"Kunde inte spara (HTTP {(int)response.StatusCode}).";
+			}
+		}
+		catch (Exception ex)
+		{
+			_saveError = true;
+			_saveMessage = $"Fel vid sparande: {ex.Message}";
+		}
+		finally
+		{
+			_saving = false;
+		}
+	}
+
+	private void ClosePanel()
+	{
+		_selected = null;
+		_saveMessage = null;
+		_saveError = false;
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		try
+		{
+			if (_module is not null)
+			{
+				await _module.InvokeVoidAsync("dispose", "trakt-karta");
+				await _module.DisposeAsync();
+			}
+		}
+		catch (JSDisconnectedException)
+		{
+			// Kretsen är redan nedkopplad – inget att städa.
+		}
+
+		_selfRef?.Dispose();
+	}
+
+	/// <summary>
+	/// Egenskaper som skickas från kartans klickhändelse (matchar GeoJSON-propertyn).
+	/// </summary>
+	public class FeatureProperties
+	{
+		public int Id { get; set; }
+		public int TraktId { get; set; }
+		public string? Status { get; set; }
+		public double Areal { get; set; }
+		public string? Tradsort { get; set; }
+		public int? AntalPlantor { get; set; }
+		public int? AntalPlantorProvyta { get; set; }
+	}
+}
