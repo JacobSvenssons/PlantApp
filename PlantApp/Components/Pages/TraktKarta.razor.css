@@ -28,6 +28,35 @@
     background: rgba(150, 30, 30, 0.9);
 }
 
+.karta-toast {
+    position: absolute;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 900;
+    padding: 0.5rem 1.1rem;
+    border-radius: 999px;
+    background: rgba(31, 77, 46, 0.92);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+    animation: toast-in 0.2s ease-out;
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
 /* Bottom sheet (rapportering) – glider upp från botten */
 .rapport-panel {
     position: absolute;
@@ -149,6 +178,58 @@
     box-shadow: 0 0 0 3px rgba(47, 107, 64, 0.18);
 }
 
+/* Provytor – dynamisk lista */
+.provytor__rubrik {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.provytor__tom {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    font-style: italic;
+}
+
+.provytor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.provyta-rad {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.provyta-rad__nr {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6b7280;
+    min-width: 1.75rem;
+}
+
+.provyta-rad__input {
+    flex: 1;
+}
+
+.provyta-rad__ta-bort {
+    border: none;
+    background: transparent;
+    font-size: 1.35rem;
+    line-height: 1;
+    color: #b91c1c;
+    cursor: pointer;
+    padding: 0 0.35rem;
+    border-radius: 6px;
+}
+
+.provyta-rad__ta-bort:hover {
+    background: rgba(185, 28, 28, 0.08);
+}
+
 /* Statusväljare som checklista (kryssrutor) */
 .status-checklista {
     display: flex;
@@ -265,3 +346,71 @@
 .knapp--sekundar:not(:disabled):hover {
     background: #f3f4f6;
 }
+
+.knapp--lank {
+    padding: 0.25rem 0.4rem;
+    border: none;
+    background: transparent;
+    color: var(--color-forest, #1f4d2e);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+.knapp--lank:hover {
+    background: rgba(31, 77, 46, 0.08);
+    text-decoration: underline;
+}
+
+/* Admin-toolbar för traktens standardträdsort */
+.trakt-toolbar {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    z-index: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.8rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(2px);
+}
+
+.trakt-toolbar__label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: #4b5563;
+}
+
+.trakt-toolbar__select {
+    padding: 0.35rem 0.55rem;
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: #fff;
+    color: var(--color-text, #1c2b22);
+}
+
+.trakt-toolbar__select:focus {
+    outline: none;
+    border-color: var(--color-forest-light, #2f6b40);
+    box-shadow: 0 0 0 3px rgba(47, 107, 64, 0.18);
+}
+
+.trakt-toolbar__status {
+    font-size: 0.8rem;
+    color: var(--color-text-muted, #5c6b60);
+}
+
+/* Fritext-avvikelse */
+.falt__textarea {
+    resize: vertical;
+    min-height: 3.5rem;
+    font-family: inherit;
+}
+

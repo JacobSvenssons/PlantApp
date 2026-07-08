@@ -43,4 +43,21 @@ public sealed class DemoUserStore
 
         return user;
     }
+
+    /// <summary>
+    /// Användare som kan tilldelas (appointeras) ett delområde i fält, dvs. plantbasar
+    /// och plantsättare (admin utför tilldelningen men tilldelas inte själv rutor).
+    /// </summary>
+    public IReadOnlyList<DemoUser> GetAppointableUsers() =>
+        _users
+            .Where(u => u.Role is RolePlantbas or RolePlantsattare)
+            .ToList();
+
+    /// <summary>
+    /// Visningsnamn för ett användarnamn, eller själva användarnamnet om det inte hittas.
+    /// </summary>
+    public string GetDisplayName(string userName) =>
+        _users.FirstOrDefault(u =>
+            string.Equals(u.UserName, userName, StringComparison.OrdinalIgnoreCase))?.DisplayName
+        ?? userName;
 }

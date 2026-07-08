@@ -1,0 +1,243 @@
+@page "/admin/insikter"
+@rendermode InteractiveServer
+@using System.Net.Http.Json
+@using System.Globalization
+@attribute [Authorize(Roles = "Admin")]
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>PlantApp – Insikter</PageTitle>
+
+<div class="insikter-page">
+    <div class="insikter-card card-soft">
+        <div class="insikter-card__header">
+            <div class="insikter-card__brand">
+                <span class="insikter-card__logo" aria-hidden="true">📊</span>
+                <div>
+                    <h1 class="insikter-card__titel">Insikter</h1>
+                    <p class="insikter-card__subtitel">Välj trakter och jämför nyckeltal för planteringen.</p>
+                </div>
+            </div>
+            <a class="btn-pill btn-pill--ghost" href="/admin">Till admin</a>
+        </div>
+
+        @if (_loadError is not null)
+        {
+            <div class="insikter-melding insikter-melding--fel">@_loadError</div>
+        }
+        else if (_statistik is null)
+        {
+            <div class="insikter-melding">Laddar statistik…</div>
+        }
+        else if (_statistik.Count == 0)
+        {
+            <div class="insikter-melding">
+                Inga trakter finns ännu. Lägg till en ny trakt på
+                <a href="/admin/upload">adminsidan</a>.
+            </div>
+        }
+        else
+        {
+            <div class="insikter-val">
+                <div class="insikter-val__topp">
+                    <span class="insikter-val__rubrik">Trakter (@_valda.Count / @_statistik.Count)</span>
+                    <div class="insikter-val__knappar">
+                        <button type="button" class="knapp-lank" @onclick="MarkeraAlla">Markera alla</button>
+                        <button type="button" class="knapp-lank" @onclick="RensaVal">Rensa</button>
+                    </div>
+                </div>
+                <div class="insikter-val__lista">
+                    @foreach (var trakt in _statistik)
+                    {
+                        <label class="insikter-val__rad">
+                            <input type="checkbox" checked="@_valda.Contains(trakt.TraktId)"
+                                   @onchange="e => OnTraktToggle(trakt.TraktId, e)" />
+                            <span class="insikter-val__namn">@trakt.Namn</span>
+                            <span class="insikter-val__meta">@trakt.AntalDelomraden delområden</span>
+                        </label>
+                    }
+                </div>
+            </div>
+
+            <div class="insikter-summering">
+                <div class="stat-kort">
+                    <span class="stat-kort__ikon" aria-hidden="true">🌱</span>
+                    <div class="stat-kort__varde">@_summering.TotaltAntalPlantor.ToString("N0", CultureInfo.CurrentCulture)</div>
+                    <div class="stat-kort__etikett">Satta plantor</div>
+                </div>
+                <div class="stat-kort">
+                    <span class="stat-kort__ikon" aria-hidden="true">✅</span>
+                    <div class="stat-kort__varde">@_summering.AntalKlara / @_summering.AntalDelomraden</div>
+                    <div class="stat-kort__etikett">Klara delområden</div>
+                </div>
+                <div class="stat-kort">
+                    <span class="stat-kort__ikon" aria-hidden="true">📈</span>
+                    <div class="stat-kort__varde">@_summering.ProcentKlar.ToString("0.#", CultureInfo.CurrentCulture) %</div>
+                    <div class="stat-kort__etikett">Färdigplanterat</div>
+                </div>
+                <div class="stat-kort">
+                    <span class="stat-kort__ikon" aria-hidden="true">📐</span>
+                    <div class="stat-kort__varde">@_summering.TotalAreal.ToString("0.##", CultureInfo.CurrentCulture) ha</div>
+                    <div class="stat-kort__etikett">Total areal</div>
+                </div>
+                <div class="stat-kort">
+                    <span class="stat-kort__ikon" aria-hidden="true">🔬</span>
+                    <div class="stat-kort__varde">@_summering.AntalProvytor.ToString("N0", CultureInfo.CurrentCulture)</div>
+                    <div class="stat-kort__etikett">Provytor</div>
+                </div>
+            </div>
+
+            <div class="insikter-tabell">
+                <div class="insikter-tabell__rubrik">Per trakt</div>
+                @if (_valda.Count == 0)
+                {
+                    <div class="insikter-melding">Välj en eller flera trakter ovan för att se detaljer.</div>
+                }
+                else
+                {
+                    <table class="tabell">
+                        <thead>
+                            <tr>
+                                <th>Trakt</th>
+                                <th class="tabell__num">Delområden</th>
+                                <th class="tabell__num">Klara</th>
+                                <th class="tabell__num">Färdigt</th>
+                                <th class="tabell__num">Areal (ha)</th>
+                                <th class="tabell__num">Plantor</th>
+                                <th class="tabell__num">Provytor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var trakt in _statistik.Where(t => _valda.Contains(t.TraktId)))
+                            {
+                                <tr>
+                                    <td>@trakt.Namn</td>
+                                    <td class="tabell__num">@trakt.AntalDelomraden</td>
+                                    <td class="tabell__num">@trakt.AntalKlara</td>
+                                    <td class="tabell__num">@trakt.ProcentKlar.ToString("0.#", CultureInfo.CurrentCulture) %</td>
+                                    <td class="tabell__num">@trakt.TotalAreal.ToString("0.##", CultureInfo.CurrentCulture)</td>
+                                    <td class="tabell__num">@trakt.TotaltAntalPlantor.ToString("N0", CultureInfo.CurrentCulture)</td>
+                                    <td class="tabell__num">@trakt.AntalProvytor</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<TraktStatistik>? _statistik;
+    private readonly HashSet<int> _valda = new();
+    private string? _loadError;
+
+    private Summering _summering = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            _statistik = await client.GetFromJsonAsync<List<TraktStatistik>>(
+                $"{NavigationManager.BaseUri}api/trakt/statistik");
+
+            // Markera alla trakter som standard så vyn visar en helhet direkt.
+            if (_statistik is not null)
+            {
+                foreach (var trakt in _statistik)
+                {
+                    _valda.Add(trakt.TraktId);
+                }
+                RaknaOmSummering();
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Kunde inte hämta statistik: {ex.Message}";
+        }
+    }
+
+    private void OnTraktToggle(int traktId, ChangeEventArgs e)
+    {
+        if ((bool)(e.Value ?? false))
+        {
+            _valda.Add(traktId);
+        }
+        else
+        {
+            _valda.Remove(traktId);
+        }
+
+        RaknaOmSummering();
+    }
+
+    private void MarkeraAlla()
+    {
+        if (_statistik is null)
+        {
+            return;
+        }
+
+        foreach (var trakt in _statistik)
+        {
+            _valda.Add(trakt.TraktId);
+        }
+
+        RaknaOmSummering();
+    }
+
+    private void RensaVal()
+    {
+        _valda.Clear();
+        RaknaOmSummering();
+    }
+
+    // Räknar om den aggregerade summeringen utifrån de valda trakterna.
+    private void RaknaOmSummering()
+    {
+        if (_statistik is null)
+        {
+            _summering = new Summering();
+            return;
+        }
+
+        var valda = _statistik.Where(t => _valda.Contains(t.TraktId)).ToList();
+        var totalAreal = valda.Sum(t => t.TotalAreal);
+        var klarAreal = valda.Sum(t => t.KlarAreal);
+
+        _summering = new Summering
+        {
+            AntalDelomraden = valda.Sum(t => t.AntalDelomraden),
+            AntalKlara = valda.Sum(t => t.AntalKlara),
+            TotalAreal = totalAreal,
+            ProcentKlar = totalAreal > 0 ? klarAreal / totalAreal * 100d : 0d,
+            TotaltAntalPlantor = valda.Sum(t => t.TotaltAntalPlantor),
+            AntalProvytor = valda.Sum(t => t.AntalProvytor)
+        };
+    }
+
+    private sealed class TraktStatistik
+    {
+        public int TraktId { get; set; }
+        public string Namn { get; set; } = "";
+        public int AntalDelomraden { get; set; }
+        public double TotalAreal { get; set; }
+        public double KlarAreal { get; set; }
+        public double ProcentKlar { get; set; }
+        public int AntalKlara { get; set; }
+        public int TotaltAntalPlantor { get; set; }
+        public int AntalProvytor { get; set; }
+    }
+
+    private sealed class Summering
+    {
+        public int AntalDelomraden { get; set; }
+        public int AntalKlara { get; set; }
+        public double TotalAreal { get; set; }
+        public double ProcentKlar { get; set; }
+        public int TotaltAntalPlantor { get; set; }
+        public int AntalProvytor { get; set; }
+    }
+}

@@ -143,7 +143,78 @@ public sealed class ShapefileService : IShapefileService
             });
         }
 
-        return result;
+        return FilterOutEnclosingBoundary(result);
+    }
+
+    /// <summary>
+    /// Om shapefilen innehåller en omslutande yttergräns-polygon (en polygon som täcker
+    /// alla övriga) exkluderas den så att den inte blir ett eget delområde. Detta hanterar
+    /// filer där yttergräns och rutor ligger som separata, överlappande polygoner.
+    /// </summary>
+    private List<DelOmrade> FilterOutEnclosingBoundary(List<DelOmrade> delOmraden)
+    {
+        if (delOmraden.Count < 2)
+        {
+            return delOmraden;
+        }
+
+        // En yttergräns omsluter alla rutor och är därför störst till ytan.
+        var candidate = delOmraden
+            .Where(d => d.Geometri is not null)
+            .OrderByDescending(d => d.Geometri!.Area)
+            .FirstOrDefault();
+
+        if (candidate?.Geometri is null)
+        {
+            return delOmraden;
+        }
+
+        var outer = candidate.Geometri;
+        bool enclosesAll = delOmraden
+            .Where(d => !ReferenceEquals(d, candidate) && d.Geometri is not null)
+            .All(d => Encloses(outer, d.Geometri!));
+
+        if (enclosesAll)
+        {
+            _logger.LogInformation(
+                "Ignorerar en omslutande yttergräns-polygon (areal {Area:N0}); behåller {Antal} delområden.",
+                outer.Area, delOmraden.Count - 1);
+            delOmraden.Remove(candidate);
+        }
+
+        return delOmraden;
+    }
+
+    // Andel av en rutas yta som måste ligga inne i yttergränsen för att den ska
+    // räknas som omsluten. Rutor är ofta separat digitaliserade och kan sticka ut
+    // någon meter utanför yttergränsens exakta kant, därför krävs inte 100 %.
+    private const double EnclosesMinCoverage = 0.9;
+
+    // Täcker "outer" hela "inner"? Godtar små digitaliseringsglapp genom att även
+    // betrakta "inner" som omsluten om merparten av dess yta ligger inne i "outer".
+    // Faller tillbaka på bounding box om geometrin är ogiltig.
+    private static bool Encloses(Geometry outer, Geometry inner)
+    {
+        try
+        {
+            if (outer.Covers(inner))
+            {
+                return true;
+            }
+
+            var innerArea = inner.Area;
+            if (innerArea <= 0)
+            {
+                return false;
+            }
+
+            var overlapArea = outer.Intersection(inner).Area;
+            return overlapArea / innerArea >= EnclosesMinCoverage;
+        }
+        catch (Exception)
+        {
+            return outer.EnvelopeInternal.Covers(inner.EnvelopeInternal);
+        }
     }
 
     private static double ReadArea(ShapefileDataReader reader, int areaOrdinal)

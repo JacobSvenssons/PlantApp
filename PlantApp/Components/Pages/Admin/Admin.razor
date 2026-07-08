@@ -1,0 +1,34 @@
+@page "/admin"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>PlantApp – Admin</PageTitle>
+
+<div class="admin-page">
+    <div class="admin-card card-soft">
+        <div class="admin-card__header">
+            <div class="admin-card__brand">
+                <span class="admin-card__logo" aria-hidden="true">⚙️</span>
+                <div>
+                    <h1 class="admin-card__titel">Admin</h1>
+                    <p class="admin-card__subtitel">Hantera trakter och följ upp planteringen.</p>
+                </div>
+            </div>
+            <a class="btn-pill btn-pill--ghost" href="/">Till start</a>
+        </div>
+
+        <div class="admin-val">
+            <a class="admin-val__kort" href="/admin/upload">
+                <span class="admin-val__ikon" aria-hidden="true">📤</span>
+                <span class="admin-val__titel">Lägg till ny trakt</span>
+                <span class="admin-val__text">Ladda upp en shapefil och skapa en ny trakt med delområden.</span>
+            </a>
+
+            <a class="admin-val__kort" href="/admin/insikter">
+                <span class="admin-val__ikon" aria-hidden="true">📊</span>
+                <span class="admin-val__titel">Insikter</span>
+                <span class="admin-val__text">Välj trakter och se satta plantor, färdiggrad och mer.</span>
+            </a>
+        </div>
+    </div>
+</div>

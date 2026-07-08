@@ -27,8 +27,8 @@
         else if (_trakter.Count == 0)
         {
             <div class="start-melding">
-                Inga trakter finns ännu. Ladda upp en shapefil på
-                <a href="/admin/upload">adminsidan</a>.
+                Inga trakter finns ännu. Lägg till en ny trakt på
+                <a href="/admin">adminsidan</a>.
             </div>
         }
         else
@@ -94,7 +94,6 @@
                 <button class="btn-pill" disabled="@(_selectedTraktId <= 0)" @onclick="OpenKarta">
                     Öppna karta
                 </button>
-                <a class="btn-pill btn-pill--ghost" href="/admin/upload">Ladda upp trakt</a>
             </div>
         }
     </div>

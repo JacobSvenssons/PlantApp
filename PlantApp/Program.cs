@@ -57,6 +57,16 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+// Skapa/uppdatera databasen automatiskt i utvecklingsläge så att migreringar
+// appliceras vid uppstart. Undviker "Cannot open database 'PlantAppDb'" på en ny
+// maskin där databasen ännu inte har skapats.
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<PlantAppDbContext>();
+    db.Database.Migrate();
+}
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {

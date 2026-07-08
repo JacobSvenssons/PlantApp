@@ -14,6 +14,8 @@ public class PlantAppDbContext : DbContext
 
     public DbSet<DelOmrade> DelOmraden => Set<DelOmrade>();
 
+    public DbSet<Provyta> Provytor => Set<Provyta>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -36,6 +38,9 @@ public class PlantAppDbContext : DbContext
                   .IsRequired()
                   .HasConversion<string>()
                   .HasMaxLength(20);
+
+            entity.Property(t => t.StandardTradsort)
+                  .HasMaxLength(100);
 
             entity.HasMany(t => t.DelOmraden)
                   .WithOne(d => d.Trakt)
@@ -62,7 +67,17 @@ public class PlantAppDbContext : DbContext
                   .HasMaxLength(100);
 
             entity.Property(d => d.AntalPlantor);
-            entity.Property(d => d.AntalPlantorProvyta);
+
+            entity.Property(d => d.Kommentar)
+                  .HasMaxLength(1000);
+
+            entity.Property(d => d.TilldeladAnvandare)
+                  .HasMaxLength(100);
+
+            entity.HasMany(d => d.Provytor)
+                  .WithOne(p => p.DelOmrade)
+                  .HasForeignKey(p => p.DelOmradeId)
+                  .OnDelete(DeleteBehavior.Cascade);
 
             // --- Spatial-mappning ---
             // Polygonen lagras nativt i SQL Server. SWEREF99 TM (SRID 3006) är ett
@@ -78,6 +93,16 @@ public class PlantAppDbContext : DbContext
             //       ON dbo.DelOmraden(Geometri)
             //       USING GEOMETRY_AUTO_GRID
             //       WITH (BOUNDING_BOX = (200000, 6100000, 1000000, 7700000));"); // SWEREF99 TM (SRID 3006), meter
+        });
+
+        modelBuilder.Entity<Provyta>(entity =>
+        {
+            entity.ToTable("Provytor");
+
+            entity.HasKey(p => p.Id);
+
+            entity.Property(p => p.AntalPlantor)
+                  .IsRequired();
         });
     }
 }

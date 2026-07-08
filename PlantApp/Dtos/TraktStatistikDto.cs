@@ -25,4 +25,7 @@ public class TraktStatistikDto
 
     /// <summary>Totala antalet satta plantor, summerat över alla delområden.</summary>
     public int TotaltAntalPlantor { get; set; }
+
+    /// <summary>Totalt antal registrerade provytor över alla delområden.</summary>
+    public int AntalProvytor { get; set; }
 }

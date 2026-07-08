@@ -133,8 +133,7 @@ public class TraktController : ControllerBase
                 { "statusVarde", (int)delOmrade.Status },
                 { "areal", delOmrade.Areal },
                 { "tradsort", delOmrade.Tradsort },
-                { "antalPlantor", delOmrade.AntalPlantor },
-                { "antalPlantorProvyta", delOmrade.AntalPlantorProvyta }
+                { "antalPlantor", delOmrade.AntalPlantor }
             };
 
             features.Add(new Feature(wgs84, attributes));
@@ -154,6 +153,7 @@ public class TraktController : ControllerBase
         var trakt = await _db.Trakter
             .AsNoTracking()
             .Include(t => t.DelOmraden)
+                .ThenInclude(d => d.Provytor)
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
         if (trakt is null)
@@ -161,6 +161,34 @@ public class TraktController : ControllerBase
             return NotFound();
         }
 
+        return Ok(BuildStatistik(trakt));
+    }
+
+    /// <summary>
+    /// Returnerar aggregerad statistik för samtliga trakter i ett anrop. Används av
+    /// adminens insiktsvy där man kan välja trakter och jämföra nyckeltal.
+    /// </summary>
+    [HttpGet("statistik")]
+    public async Task<IActionResult> GetAllStatistik(CancellationToken cancellationToken)
+    {
+        var trakter = await _db.Trakter
+            .AsNoTracking()
+            .Include(t => t.DelOmraden)
+                .ThenInclude(d => d.Provytor)
+            .OrderBy(t => t.Namn)
+            .ToListAsync(cancellationToken);
+
+        var statistik = trakter.Select(BuildStatistik).ToList();
+
+        return Ok(statistik);
+    }
+
+    /// <summary>
+    /// Bygger en <see cref="TraktStatistikDto"/> från en inläst trakt (med delområden
+    /// och provytor). Delas av statistik-endpointen för en enskild trakt och för alla.
+    /// </summary>
+    private static TraktStatistikDto BuildStatistik(PlantApp.Models.Trakt trakt)
+    {
         var delomraden = trakt.DelOmraden;
         var totalAreal = delomraden.Sum(d => d.Areal);
         var klarAreal = delomraden
@@ -168,7 +196,7 @@ public class TraktController : ControllerBase
             .Sum(d => d.Areal);
         var procentKlar = totalAreal > 0 ? klarAreal / totalAreal * 100d : 0d;
 
-        var statistik = new TraktStatistikDto
+        return new TraktStatistikDto
         {
             TraktId = trakt.Id,
             Namn = trakt.Namn,
@@ -177,11 +205,53 @@ public class TraktController : ControllerBase
             KlarAreal = klarAreal,
             ProcentKlar = procentKlar,
             AntalKlara = delomraden.Count(d => d.Status == PlantApp.Models.DelOmradeStatus.Klar),
-            TotaltAntalPlantor = delomraden.Sum(d => d.AntalPlantor ?? 0)
+            TotaltAntalPlantor = delomraden.Sum(d => d.AntalPlantor ?? 0),
+            AntalProvytor = delomraden.Sum(d => d.Provytor.Count)
         };
-
-        return Ok(statistik);
     }
+
+    /// <summary>
+    /// Returnerar fullständig detalj för ett delområde, inklusive dess provytor.
+    /// Hämtas av kartvyns rapporteringspanel när ett delområde klickas.
+    /// </summary>
+    [HttpGet("delomrade/{id:int}")]
+    public async Task<IActionResult> GetDelOmradeDetail(int id, CancellationToken cancellationToken)
+    {
+        var delOmrade = await _db.DelOmraden
+            .AsNoTracking()
+            .Include(d => d.Trakt)
+            .Include(d => d.Provytor)
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+
+        if (delOmrade is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(MapToDetail(delOmrade));
+    }
+
+    /// <summary>
+    /// Mappar ett delområde (med trakt och provytor inlästa) till detalj-DTO:n som
+    /// kartvyns rapporteringspanel använder. Delas av GET- och PUT-endpointen.
+    /// </summary>
+    private static DelOmradeDetailDto MapToDetail(PlantApp.Models.DelOmrade delOmrade) =>
+        new()
+        {
+            Id = delOmrade.Id,
+            TraktId = delOmrade.TraktId,
+            Status = delOmrade.Status,
+            Areal = delOmrade.Areal,
+            Tradsort = delOmrade.Tradsort,
+            TraktStandardTradsort = delOmrade.Trakt?.StandardTradsort,
+            AntalPlantor = delOmrade.AntalPlantor,
+            Kommentar = delOmrade.Kommentar,
+            TilldeladAnvandare = delOmrade.TilldeladAnvandare,
+            Provytor = delOmrade.Provytor
+                .OrderBy(p => p.Id)
+                .Select(p => new ProvytaDto { Id = p.Id, AntalPlantor = p.AntalPlantor })
+                .ToList()
+        };
 
     /// <summary>
     /// Uppdaterar ett delområdes status och plantantal (anropas från kartvyns rapporteringspanel).
@@ -193,6 +263,8 @@ public class TraktController : ControllerBase
         CancellationToken cancellationToken)
     {
         var delOmrade = await _db.DelOmraden
+            .Include(d => d.Trakt)
+            .Include(d => d.Provytor)
             .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
 
         if (delOmrade is null)
@@ -200,19 +272,72 @@ public class TraktController : ControllerBase
             return NotFound();
         }
 
+        // Ett delområde kan inte markeras som klart utan att antal plantor är angivet.
+        // Valideras även serversidan så att det inte kan kringgås av ett direkt API-anrop.
+        if (dto.Status == PlantApp.Models.DelOmradeStatus.Klar && (dto.AntalPlantor is null or <= 0))
+        {
+            return BadRequest("Ange antal plantor innan området markeras som klart.");
+        }
+
         delOmrade.Status = dto.Status;
         delOmrade.AntalPlantor = dto.AntalPlantor;
-        delOmrade.AntalPlantorProvyta = dto.AntalPlantorProvyta;
+        delOmrade.Tradsort = Normalisera(dto.Tradsort);
+        delOmrade.Kommentar = Normalisera(dto.Kommentar);
+        delOmrade.TilldeladAnvandare = Normalisera(dto.TilldeladAnvandare);
+
+        // Provytor skickas som en fullständig lista från klienten – ersätt de befintliga
+        // raderna i stället för att försöka diffa fram vilka som lagts till/tagits bort.
+        _db.RemoveRange(delOmrade.Provytor);
+        delOmrade.Provytor = dto.ProvytaAntal
+            .Select(antal => new PlantApp.Models.Provyta { DelOmradeId = delOmrade.Id, AntalPlantor = antal })
+            .ToList();
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        return Ok(new
-        {
-            delOmrade.Id,
-            Status = delOmrade.Status.ToString(),
-            StatusVarde = (int)delOmrade.Status,
-            delOmrade.AntalPlantor,
-            delOmrade.AntalPlantorProvyta
-        });
+        return Ok(MapToDetail(delOmrade));
     }
+
+    /// <summary>
+    /// Returnerar traktens standardträdsort (för kartvyns admin-toolbar).
+    /// </summary>
+    [HttpGet("{id:int}/tradsort")]
+    public async Task<IActionResult> GetTraktTradsort(int id, CancellationToken cancellationToken)
+    {
+        var trakt = await _db.Trakter
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
+        if (trakt is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(new TraktTradsortDto { StandardTradsort = trakt.StandardTradsort });
+    }
+
+    /// <summary>
+    /// Sätter (eller tömmer) traktens standardträdsort. Admin-funktion från kartvyn.
+    /// </summary>
+    [HttpPut("{id:int}/tradsort")]
+    public async Task<IActionResult> SetTraktTradsort(
+        int id,
+        [FromBody] TraktTradsortDto dto,
+        CancellationToken cancellationToken)
+    {
+        var trakt = await _db.Trakter.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
+        if (trakt is null)
+        {
+            return NotFound();
+        }
+
+        trakt.StandardTradsort = Normalisera(dto.StandardTradsort);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return Ok(new TraktTradsortDto { StandardTradsort = trakt.StandardTradsort });
+    }
+
+    /// <summary>Trimmar en sträng och gör tomt/whitespace till null för konsekvent lagring.</summary>
+    private static string? Normalisera(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

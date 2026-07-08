@@ -34,19 +34,24 @@ namespace PlantApp.Migrations
                     b.Property<int?>("AntalPlantor")
                         .HasColumnType("int");
 
-                    b.Property<int?>("AntalPlantorProvyta")
-                        .HasColumnType("int");
-
                     b.Property<double>("Areal")
                         .HasColumnType("float");
 
                     b.Property<Polygon>("Geometri")
                         .HasColumnType("geometry");
 
+                    b.Property<string>("Kommentar")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TilldeladAnvandare")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Tradsort")
                         .HasMaxLength(100)
@@ -60,6 +65,27 @@ namespace PlantApp.Migrations
                     b.HasIndex("TraktId");
 
                     b.ToTable("DelOmraden", (string)null);
+                });
+
+            modelBuilder.Entity("PlantApp.Models.Provyta", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AntalPlantor")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DelOmradeId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DelOmradeId");
+
+                    b.ToTable("Provytor", (string)null);
                 });
 
             modelBuilder.Entity("PlantApp.Models.Trakt", b =>
@@ -77,6 +103,10 @@ namespace PlantApp.Migrations
 
                     b.Property<DateTime>("SkapadDatum")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("StandardTradsort")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -97,6 +127,22 @@ namespace PlantApp.Migrations
                         .IsRequired();
 
                     b.Navigation("Trakt");
+                });
+
+            modelBuilder.Entity("PlantApp.Models.Provyta", b =>
+                {
+                    b.HasOne("PlantApp.Models.DelOmrade", "DelOmrade")
+                        .WithMany("Provytor")
+                        .HasForeignKey("DelOmradeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DelOmrade");
+                });
+
+            modelBuilder.Entity("PlantApp.Models.DelOmrade", b =>
+                {
+                    b.Navigation("Provytor");
                 });
 
             modelBuilder.Entity("PlantApp.Models.Trakt", b =>

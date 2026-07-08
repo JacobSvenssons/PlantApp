@@ -16,5 +16,11 @@ public class Trakt
     /// </summary>
     public TraktStatus Status { get; set; }
 
+    /// <summary>
+    /// Standardträdsort för trakten. Används som förvalt värde för delområden som
+    /// saknar en egen trädsort. Kan vara null om admin inte satt någon standard ännu.
+    /// </summary>
+    public string? StandardTradsort { get; set; }
+
     public ICollection<DelOmrade> DelOmraden { get; set; } = new List<DelOmrade>();
 }

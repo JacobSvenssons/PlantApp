@@ -59,12 +59,14 @@
 	private HttpContext HttpContext { get; set; } = default!;
 
 	[SupplyParameterFromForm]
-	private LoginInput Input { get; set; } = new();
+	private LoginInput Input { get; set; } = default!;
 
 	[SupplyParameterFromQuery]
 	private string? ReturnUrl { get; set; }
 
 	private string? _errorMessage;
+
+	protected override void OnInitialized() => Input ??= new();
 
 	private async Task LoginAsync()
 	{

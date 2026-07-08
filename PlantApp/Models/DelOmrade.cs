@@ -27,7 +27,23 @@ public class DelOmrade
 
     public int? AntalPlantor { get; set; }
 
-    public int? AntalPlantorProvyta { get; set; }
+    /// <summary>
+    /// Fritext-avvikelse eller kommentar om delområdet, t.ex. hinder i terrängen
+    /// eller noteringar från planteringen. Valfri.
+    /// </summary>
+    public string? Kommentar { get; set; }
+
+    /// <summary>
+    /// Användarnamn för den demo-användare som delområdet är tilldelat (appointerat) till.
+    /// Null om ingen är tilldelad. Blir en riktig användarreferens när användarhantering införs.
+    /// </summary>
+    public string? TilldeladAnvandare { get; set; }
+
+    /// <summary>
+    /// Provytor tagna inom delområdet. Antalet provytor är listans längd; varje
+    /// provyta har sitt eget antal plantor.
+    /// </summary>
+    public ICollection<Provyta> Provytor { get; set; } = new List<Provyta>();
 
     /// <summary>
     /// Den geografiska rutan som en polygon. Mappas till SQL Server-typen 'geometry'
