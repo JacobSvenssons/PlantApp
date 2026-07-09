@@ -42,6 +42,8 @@ public class PlantAppDbContext : DbContext
             entity.Property(t => t.StandardTradsort)
                   .HasMaxLength(100);
 
+            entity.Property(t => t.MalPlantorPerHektar);
+
             entity.HasMany(t => t.DelOmraden)
                   .WithOne(d => d.Trakt)
                   .HasForeignKey(d => d.TraktId)
@@ -65,6 +67,8 @@ public class PlantAppDbContext : DbContext
 
             entity.Property(d => d.Tradsort)
                   .HasMaxLength(100);
+
+            entity.Property(d => d.MalPlantorPerHektar);
 
             entity.Property(d => d.AntalPlantor);
 

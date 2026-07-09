@@ -21,6 +21,12 @@ public class DelOmradeDetailDto
 	/// <summary>Traktens standardträdsort, visas som förval när delområdet saknar egen trädsort.</summary>
 	public string? TraktStandardTradsort { get; set; }
 
+	/// <summary>Mål plantor per hektar för delområdet (override av traktens mål). Null = ärver traktens mål.</summary>
+	public int? MalPlantorPerHektar { get; set; }
+
+	/// <summary>Traktens mål plantor per hektar, visas som förval när delområdet saknar eget mål.</summary>
+	public int? TraktMalPlantorPerHektar { get; set; }
+
 	public int? AntalPlantor { get; set; }
 
 	/// <summary>Fritext-avvikelse/kommentar om delområdet.</summary>

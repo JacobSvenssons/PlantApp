@@ -199,6 +199,12 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* Numeriska rubriker måste vara mer specifika än ".tabell thead th" (som är
+   vänsterställd) för att linjera rakt ovanför sina högerställda celler. */
+.tabell thead th.tabell__num {
+    text-align: right;
+}
+
 /* Avvikelser / kommentarer */
 .insikter-avvikelser {
     margin-top: 1.75rem;

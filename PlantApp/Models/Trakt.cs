@@ -22,5 +22,12 @@ public class Trakt
     /// </summary>
     public string? StandardTradsort { get; set; }
 
+    /// <summary>
+    /// Traktens mål för antal plantor per hektar. Används som förvalt värde för
+    /// delområden som saknar ett eget mål. Kan vara null om admin/plantbas inte
+    /// satt något mål ännu.
+    /// </summary>
+    public int? MalPlantorPerHektar { get; set; }
+
     public ICollection<DelOmrade> DelOmraden { get; set; } = new List<DelOmrade>();
 }

@@ -16,6 +16,9 @@ public class DelOmradeUpdateDto
     /// <summary>Trädsort för delområdet (override av traktens standard). Null = använd traktens standard.</summary>
     public string? Tradsort { get; set; }
 
+    /// <summary>Mål plantor per hektar för delområdet (override av traktens mål). Null = använd traktens mål.</summary>
+    public int? MalPlantorPerHektar { get; set; }
+
     /// <summary>Fritext-avvikelse/kommentar om delområdet. Valfri.</summary>
     public string? Kommentar { get; set; }
 

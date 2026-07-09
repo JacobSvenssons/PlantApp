@@ -25,6 +25,13 @@ public class DelOmrade
     /// </summary>
     public string? Tradsort { get; set; }
 
+    /// <summary>
+    /// Delområdets mål för antal plantor per hektar. Null innebär att traktens
+    /// mål (<see cref="Trakt.MalPlantorPerHektar"/>) ärvs. Sätts av admin/plantbas;
+    /// plantsättare ser det bara.
+    /// </summary>
+    public int? MalPlantorPerHektar { get; set; }
+
     public int? AntalPlantor { get; set; }
 
     /// <summary>

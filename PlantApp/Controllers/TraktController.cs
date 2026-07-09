@@ -276,6 +276,8 @@ public class TraktController : ControllerBase
             Areal = delOmrade.Areal,
             Tradsort = delOmrade.Tradsort,
             TraktStandardTradsort = delOmrade.Trakt?.StandardTradsort,
+            MalPlantorPerHektar = delOmrade.MalPlantorPerHektar,
+            TraktMalPlantorPerHektar = delOmrade.Trakt?.MalPlantorPerHektar,
             AntalPlantor = delOmrade.AntalPlantor,
             Kommentar = delOmrade.Kommentar,
             TilldeladAnvandare = delOmrade.TilldeladAnvandare,
@@ -314,6 +316,7 @@ public class TraktController : ControllerBase
         delOmrade.Status = dto.Status;
         delOmrade.AntalPlantor = dto.AntalPlantor;
         delOmrade.Tradsort = Normalisera(dto.Tradsort);
+        delOmrade.MalPlantorPerHektar = dto.MalPlantorPerHektar;
         delOmrade.Kommentar = Normalisera(dto.Kommentar);
         delOmrade.TilldeladAnvandare = Normalisera(dto.TilldeladAnvandare);
 
@@ -387,6 +390,66 @@ public class TraktController : ControllerBase
         await _db.SaveChangesAsync(cancellationToken);
 
         return Ok(new TraktTradsortDto { StandardTradsort = trakt.StandardTradsort });
+    }
+
+    /// <summary>
+    /// Returnerar traktens mål plantor per hektar (för kartvyns admin-toolbar).
+    /// </summary>
+    [HttpGet("{id:int}/mal")]
+    public async Task<IActionResult> GetTraktMal(int id, CancellationToken cancellationToken)
+    {
+        var trakt = await _db.Trakter
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
+        if (trakt is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(new TraktMalDto { MalPlantorPerHektar = trakt.MalPlantorPerHektar });
+    }
+
+    /// <summary>
+    /// Sätter (eller tömmer) traktens mål plantor per hektar. Admin/plantbas-funktion från kartvyn.
+    /// </summary>
+    [HttpPut("{id:int}/mal")]
+    public async Task<IActionResult> SetTraktMal(
+        int id,
+        [FromBody] TraktMalDto dto,
+        CancellationToken cancellationToken)
+    {
+        var trakt = await _db.Trakter
+            .Include(t => t.DelOmraden)
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
+        if (trakt is null)
+        {
+            return NotFound();
+        }
+
+        var gammaltMal = trakt.MalPlantorPerHektar;
+        var nyttMal = dto.MalPlantorPerHektar is > 0 ? dto.MalPlantorPerHektar : null;
+        trakt.MalPlantorPerHektar = nyttMal;
+
+        // Propagera det nya målet till rutorna. Rutor som ärver (saknar eget mål)
+        // eller som hade det gamla målet följer med, medan medvetna per-ruta-
+        // överstyrningar (ett annat värde) lämnas orörda.
+        foreach (var delOmrade in trakt.DelOmraden)
+        {
+            bool arver = delOmrade.MalPlantorPerHektar is null;
+            bool haddeGammaltMal = gammaltMal is not null
+                && delOmrade.MalPlantorPerHektar == gammaltMal;
+
+            if (arver || haddeGammaltMal)
+            {
+                delOmrade.MalPlantorPerHektar = nyttMal;
+            }
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return Ok(new TraktMalDto { MalPlantorPerHektar = trakt.MalPlantorPerHektar });
     }
 
     /// <summary>Trimmar en sträng och gör tomt/whitespace till null för konsekvent lagring.</summary>
