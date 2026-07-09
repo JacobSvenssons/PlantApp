@@ -44,6 +44,9 @@ namespace PlantApp.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<int?>("MalPlantorPerHektar")
+                        .HasColumnType("int");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -95,6 +98,9 @@ namespace PlantApp.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("MalPlantorPerHektar")
+                        .HasColumnType("int");
 
                     b.Property<string>("Namn")
                         .IsRequired()

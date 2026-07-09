@@ -218,6 +218,14 @@ public class TraktController : ControllerBase
             .Sum(d => d.Areal);
         var procentKlar = totalAreal > 0 ? klarAreal / totalAreal * 100d : 0d;
 
+        // Målantal plantor: varje delområdes effektiva mål/ha (eget mål i första hand,
+        // annars traktens) multiplicerat med arealen. Summeras över trakten.
+        var malTotaltAntalPlantor = delomraden.Sum(d =>
+        {
+            var malPerHektar = d.MalPlantorPerHektar ?? trakt.MalPlantorPerHektar;
+            return malPerHektar is > 0 ? malPerHektar.Value * d.Areal : 0d;
+        });
+
         return new TraktStatistikDto
         {
             TraktId = trakt.Id,
@@ -228,6 +236,7 @@ public class TraktController : ControllerBase
             ProcentKlar = procentKlar,
             AntalKlara = delomraden.Count(d => d.Status == PlantApp.Models.DelOmradeStatus.Klar),
             TotaltAntalPlantor = delomraden.Sum(d => d.AntalPlantor ?? 0),
+            MalTotaltAntalPlantor = (int)Math.Round(malTotaltAntalPlantor),
             AntalProvytor = delomraden.Sum(d => d.Provytor.Count),
             Avvikelser = delomraden
                 .Where(d => !string.IsNullOrWhiteSpace(d.Kommentar))

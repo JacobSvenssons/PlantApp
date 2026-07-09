@@ -197,6 +197,7 @@
 .tabell__num {
     text-align: right;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 
 /* Numeriska rubriker måste vara mer specifika än ".tabell thead th" (som är

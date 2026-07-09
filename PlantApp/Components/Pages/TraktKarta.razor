@@ -15,21 +15,35 @@
 <div class="trakt-karta-page">
 	<div id="trakt-karta" class="trakt-karta"></div>
 
-	@if (_isAdmin)
+	@if (_kanAndraTradsort || _kanAndraMal)
 	{
 		<div class="trakt-toolbar">
-			<label class="trakt-toolbar__label" for="trakt-standard-tradsort">Traktens trädsort</label>
-			<select id="trakt-standard-tradsort" class="trakt-toolbar__select"
-					value="@(_traktStandardTradsort ?? "")" @onchange="OnTraktTradsortChanged" disabled="@_sparTraktTradsort">
-				<option value="">– Ingen standard –</option>
-				@foreach (var sort in Tradsorter.Standard)
-				{
-					<option value="@sort">@sort</option>
-				}
-			</select>
-			@if (_sparTraktTradsort)
+			@if (_kanAndraTradsort)
 			{
-				<span class="trakt-toolbar__status">Sparar…</span>
+				<label class="trakt-toolbar__label" for="trakt-standard-tradsort">Traktens trädsort</label>
+				<select id="trakt-standard-tradsort" class="trakt-toolbar__select"
+						value="@(_traktStandardTradsort ?? "")" @onchange="OnTraktTradsortChanged" disabled="@_sparTraktTradsort">
+					<option value="">– Ingen standard –</option>
+					@foreach (var sort in Tradsorter.Standard)
+					{
+						<option value="@sort">@sort</option>
+					}
+				</select>
+				@if (_sparTraktTradsort)
+				{
+					<span class="trakt-toolbar__status">Sparar…</span>
+				}
+			}
+			@if (_kanAndraMal)
+			{
+				<label class="trakt-toolbar__label" for="trakt-mal">Mål plantor/ha</label>
+				<input id="trakt-mal" type="number" min="0" class="trakt-toolbar__input"
+					   value="@(_traktMalPlantorPerHektar?.ToString() ?? "")"
+					   @onchange="OnTraktMalChanged" disabled="@_sparTraktMal" />
+				@if (_sparTraktMal)
+				{
+					<span class="trakt-toolbar__status">Sparar…</span>
+				}
 			}
 		</div>
 	}
@@ -151,6 +165,25 @@
 					<input id="antal-plantor" type="number" min="0" class="falt__input"
 						   @bind="_antalPlantor" @bind:event="oninput" />
 				</div>
+				<div class="falt">
+					<label for="ruta-mal">Mål plantor/ha</label>
+					@if (_kanAndraMal)
+					{
+						<input id="ruta-mal" type="number" min="0" class="falt__input"
+							   placeholder="@(_traktMalPlantorPerHektar is not null ? $"Traktens mål ({_traktMalPlantorPerHektar})" : "– Ej angivet –")"
+							   @bind="_malPlantorPerHektar" />
+					}
+					else
+					{
+						<div class="falt__varde">
+							@(_malPlantorPerHektar is not null
+								? _malPlantorPerHektar.ToString()
+								: (_traktMalPlantorPerHektar is not null
+									? $"{_traktMalPlantorPerHektar} (traktens mål)"
+									: "– Ej angivet –"))
+						</div>
+					}
+				</div>
 			</div>
 
 			@if (_kanTilldela)
@@ -246,6 +279,7 @@
 	private bool _klar;
 	private int? _antalPlantor;
 	private string? _tradsort;
+	private int? _malPlantorPerHektar;
 	private string? _kommentar;
 	private string? _tilldeladAnvandare;
 	private readonly List<int?> _provytor = new();
@@ -261,10 +295,13 @@
 	private bool _isAdmin;
 	private bool _kanTilldela;
 	private bool _kanAndraTradsort;
+	private bool _kanAndraMal;
 	private bool _kanSeAvvikelser;
 	private IReadOnlyList<DemoUserStore.DemoUser> _appointableUsers = [];
 	private string? _traktStandardTradsort;
 	private bool _sparTraktTradsort;
+	private int? _traktMalPlantorPerHektar;
+	private bool _sparTraktMal;
 
 	// Avvikelser/kommentarer på trakten (sammanfattning för admin/plantbas).
 	private List<DelOmradeAvvikelseDto> _avvikelser = new();
@@ -282,6 +319,8 @@
 			_kanTilldela = _isAdmin || user.IsInRole(DemoUserStore.RolePlantbas);
 			// Trädslag sätts av admin/plantbas; plantsättare ser det bara.
 			_kanAndraTradsort = _isAdmin || user.IsInRole(DemoUserStore.RolePlantbas);
+			// Mål plantor/ha sätts av admin/plantbas; plantsättare ser det bara.
+			_kanAndraMal = _isAdmin || user.IsInRole(DemoUserStore.RolePlantbas);
 			// Avvikelse-sammanfattningen är ett översiktsverktyg för admin/plantbas.
 			_kanSeAvvikelser = _isAdmin || user.IsInRole(DemoUserStore.RolePlantbas);
 		}
@@ -319,6 +358,18 @@
 				// Trakt-standarden är inte kritisk för att kartan ska fungera.
 			}
 
+			// Hämta traktens mål plantor/ha (visas som förval i panelen och i admin-toolbaren).
+			try
+			{
+				var mal = await client.GetFromJsonAsync<TraktMalDto>(
+					$"{NavigationManager.BaseUri}api/trakt/{TraktId}/mal");
+				_traktMalPlantorPerHektar = mal?.MalPlantorPerHektar;
+			}
+			catch
+			{
+				// Trakt-målet är inte kritiskt för att kartan ska fungera.
+			}
+
 			// Hämta avvikelser för sammanfattningen (endast admin/plantbas).
 			if (_kanSeAvvikelser)
 			{
@@ -351,6 +402,7 @@
 
 		_antalPlantor = properties.AntalPlantor;
 		_tradsort = null;
+		_malPlantorPerHektar = null;
 		_kommentar = null;
 		_tilldeladAnvandare = null;
 		_provytor.Clear();
@@ -375,10 +427,12 @@
 			if (detail is not null && _selected?.Id == properties.Id)
 			{
 				_tradsort = detail.Tradsort;
+				_malPlantorPerHektar = detail.MalPlantorPerHektar;
 				_kommentar = detail.Kommentar;
 				_tilldeladAnvandare = detail.TilldeladAnvandare;
 				// Håll trakt-standarden aktuell (kan ha ändrats via admin-toolbaren).
 				_traktStandardTradsort = detail.TraktStandardTradsort;
+				_traktMalPlantorPerHektar = detail.TraktMalPlantorPerHektar;
 				_provytor.Clear();
 				_provytor.AddRange(detail.Provytor.Select(p => (int?)p.AntalPlantor));
 				await InvokeAsync(StateHasChanged);
@@ -447,6 +501,40 @@
 		finally
 		{
 			_sparTraktTradsort = false;
+		}
+	}
+
+	// Sätter traktens mål plantor/ha (admin-toolbaren). Sparas direkt mot API:t.
+	private async Task OnTraktMalChanged(ChangeEventArgs e)
+	{
+		var value = e.Value?.ToString();
+		int? nyttMal = int.TryParse(value, out var parsed) && parsed > 0 ? parsed : null;
+
+		_sparTraktMal = true;
+		try
+		{
+			var client = HttpClientFactory.CreateClient();
+			var response = await client.PutAsJsonAsync(
+				$"{NavigationManager.BaseUri}api/trakt/{TraktId}/mal",
+				new TraktMalDto { MalPlantorPerHektar = nyttMal });
+
+			if (response.IsSuccessStatusCode)
+			{
+				_traktMalPlantorPerHektar = nyttMal;
+				ShowToast("Traktens mål plantor/ha sparat.");
+			}
+			else
+			{
+				ShowToast($"Kunde inte spara mål (HTTP {(int)response.StatusCode}).");
+			}
+		}
+		catch (Exception ex)
+		{
+			ShowToast($"Fel vid sparande av mål: {ex.Message}");
+		}
+		finally
+		{
+			_sparTraktMal = false;
 		}
 	}
 
@@ -551,6 +639,7 @@
 				Status = status,
 				AntalPlantor = _antalPlantor,
 				Tradsort = _tradsort,
+				MalPlantorPerHektar = _malPlantorPerHektar,
 				Kommentar = _kommentar,
 				TilldeladAnvandare = _tilldeladAnvandare,
 				ProvytaAntal = _provytor.Select(p => p ?? 0).ToList()

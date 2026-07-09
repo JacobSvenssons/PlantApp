@@ -387,7 +387,8 @@
     color: #4b5563;
 }
 
-.trakt-toolbar__select {
+.trakt-toolbar__select,
+.trakt-toolbar__input {
     padding: 0.35rem 0.55rem;
     border: 1px solid var(--color-border, #d1d5db);
     border-radius: 8px;
@@ -396,7 +397,12 @@
     color: var(--color-text, #1c2b22);
 }
 
-.trakt-toolbar__select:focus {
+.trakt-toolbar__input {
+    width: 6rem;
+}
+
+.trakt-toolbar__select:focus,
+.trakt-toolbar__input:focus {
     outline: none;
     border-color: var(--color-forest-light, #2f6b40);
     box-shadow: 0 0 0 3px rgba(47, 107, 64, 0.18);

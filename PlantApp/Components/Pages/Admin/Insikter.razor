@@ -66,6 +66,20 @@
                     <div class="stat-kort__etikett">Satta plantor</div>
                 </div>
                 <div class="stat-kort">
+                    <span class="stat-kort__ikon" aria-hidden="true">🎯</span>
+                    <div class="stat-kort__varde">@_summering.MalTotaltAntalPlantor.ToString("N0", CultureInfo.CurrentCulture)</div>
+                    <div class="stat-kort__etikett">Mål plantor</div>
+                </div>
+                <div class="stat-kort">
+                    <span class="stat-kort__ikon" aria-hidden="true">📊</span>
+                    <div class="stat-kort__varde">
+                        @(_summering.MalTotaltAntalPlantor > 0
+                            ? $"{_summering.ProcentAvMal.ToString("0.#", CultureInfo.CurrentCulture)} %"
+                            : "–")
+                    </div>
+                    <div class="stat-kort__etikett">Måluppfyllelse</div>
+                </div>
+                <div class="stat-kort">
                     <span class="stat-kort__ikon" aria-hidden="true">✅</span>
                     <div class="stat-kort__varde">@_summering.AntalKlara / @_summering.AntalDelomraden</div>
                     <div class="stat-kort__etikett">Klara delområden</div>
@@ -109,12 +123,17 @@
                                 <th class="tabell__num">Färdigt</th>
                                 <th class="tabell__num">Areal (ha)</th>
                                 <th class="tabell__num">Plantor</th>
+                                <th class="tabell__num">Mål</th>
+                                <th class="tabell__num">Måluppfyllelse</th>
                                 <th class="tabell__num">Provytor</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var trakt in _statistik.Where(t => _valda.Contains(t.TraktId)))
                             {
+                                var maluppfyllelse = trakt.MalTotaltAntalPlantor > 0
+                                    ? $"{(trakt.TotaltAntalPlantor / (double)trakt.MalTotaltAntalPlantor * 100d).ToString("0.#", CultureInfo.CurrentCulture)} %"
+                                    : "–";
                                 <tr>
                                     <td>@trakt.Namn</td>
                                     <td class="tabell__num">@trakt.AntalDelomraden</td>
@@ -122,6 +141,8 @@
                                     <td class="tabell__num">@trakt.ProcentKlar.ToString("0.#", CultureInfo.CurrentCulture) %</td>
                                     <td class="tabell__num">@trakt.TotalAreal.ToString("0.##", CultureInfo.CurrentCulture)</td>
                                     <td class="tabell__num">@trakt.TotaltAntalPlantor.ToString("N0", CultureInfo.CurrentCulture)</td>
+                                    <td class="tabell__num">@trakt.MalTotaltAntalPlantor.ToString("N0", CultureInfo.CurrentCulture)</td>
+                                    <td class="tabell__num">@maluppfyllelse</td>
                                     <td class="tabell__num">@trakt.AntalProvytor</td>
                                 </tr>
                             }
@@ -255,6 +276,7 @@
             TotalAreal = totalAreal,
             ProcentKlar = totalAreal > 0 ? klarAreal / totalAreal * 100d : 0d,
             TotaltAntalPlantor = valda.Sum(t => t.TotaltAntalPlantor),
+            MalTotaltAntalPlantor = valda.Sum(t => t.MalTotaltAntalPlantor),
             AntalProvytor = valda.Sum(t => t.AntalProvytor),
             AntalAvvikelser = valda.Sum(t => t.Avvikelser.Count)
         };
@@ -277,6 +299,7 @@
         public double ProcentKlar { get; set; }
         public int AntalKlara { get; set; }
         public int TotaltAntalPlantor { get; set; }
+        public int MalTotaltAntalPlantor { get; set; }
         public int AntalProvytor { get; set; }
         public List<DelOmradeAvvikelse> Avvikelser { get; set; } = new();
     }
@@ -295,7 +318,12 @@
         public double TotalAreal { get; set; }
         public double ProcentKlar { get; set; }
         public int TotaltAntalPlantor { get; set; }
+        public int MalTotaltAntalPlantor { get; set; }
         public int AntalProvytor { get; set; }
         public int AntalAvvikelser { get; set; }
+
+        /// <summary>Andel av målet som är uppnått, 0–100 (%). 0 om inget mål är satt.</summary>
+        public double ProcentAvMal =>
+            MalTotaltAntalPlantor > 0 ? (double)TotaltAntalPlantor / MalTotaltAntalPlantor * 100d : 0d;
     }
 }

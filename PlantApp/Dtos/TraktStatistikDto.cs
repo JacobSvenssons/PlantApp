@@ -26,6 +26,13 @@ public class TraktStatistikDto
     /// <summary>Totala antalet satta plantor, summerat över alla delområden.</summary>
     public int TotaltAntalPlantor { get; set; }
 
+    /// <summary>
+    /// Traktens målantal plantor, beräknat som summan av varje delområdes effektiva
+    /// mål per hektar multiplicerat med dess areal. Delområdets eget mål används i
+    /// första hand, annars traktens mål. 0 om inget mål är satt någonstans.
+    /// </summary>
+    public int MalTotaltAntalPlantor { get; set; }
+
     /// <summary>Totalt antal registrerade provytor över alla delområden.</summary>
     public int AntalProvytor { get; set; }
 
