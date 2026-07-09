@@ -91,11 +91,33 @@ public class TraktController : ControllerBase
                 t.Namn,
                 Status = t.Status.ToString(),
                 t.SkapadDatum,
-                AntalDelomraden = t.DelOmraden.Count
+                AntalDelomraden = t.DelOmraden.Count,
+                AntalProvytor = t.DelOmraden.SelectMany(d => d.Provytor).Count(),
+                TotaltAntalPlantor = t.DelOmraden.Sum(d => d.AntalPlantor ?? 0)
             })
             .ToListAsync(cancellationToken);
 
         return Ok(trakter);
+    }
+
+    /// <summary>
+    /// Raderar en trakt och – via cascade – dess delområden och provytor. Admin-funktion.
+    /// </summary>
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> DeleteTrakt(int id, CancellationToken cancellationToken)
+    {
+        var trakt = await _db.Trakter.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
+        if (trakt is null)
+        {
+            return NotFound();
+        }
+
+        // DelOmraden och deras Provytor tas bort automatiskt via konfigurerad cascade delete.
+        _db.Trakter.Remove(trakt);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return NoContent();
     }
 
     /// <summary>
@@ -206,7 +228,17 @@ public class TraktController : ControllerBase
             ProcentKlar = procentKlar,
             AntalKlara = delomraden.Count(d => d.Status == PlantApp.Models.DelOmradeStatus.Klar),
             TotaltAntalPlantor = delomraden.Sum(d => d.AntalPlantor ?? 0),
-            AntalProvytor = delomraden.Sum(d => d.Provytor.Count)
+            AntalProvytor = delomraden.Sum(d => d.Provytor.Count),
+            Avvikelser = delomraden
+                .Where(d => !string.IsNullOrWhiteSpace(d.Kommentar))
+                .OrderBy(d => d.Id)
+                .Select(d => new DelOmradeAvvikelseDto
+                {
+                    DelOmradeId = d.Id,
+                    Kommentar = d.Kommentar!,
+                    Status = d.Status.ToString()
+                })
+                .ToList()
         };
     }
 
@@ -324,14 +356,34 @@ public class TraktController : ControllerBase
         [FromBody] TraktTradsortDto dto,
         CancellationToken cancellationToken)
     {
-        var trakt = await _db.Trakter.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        var trakt = await _db.Trakter
+            .Include(t => t.DelOmraden)
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
         if (trakt is null)
         {
             return NotFound();
         }
 
-        trakt.StandardTradsort = Normalisera(dto.StandardTradsort);
+        var gammalStandard = trakt.StandardTradsort;
+        var nyStandard = Normalisera(dto.StandardTradsort);
+        trakt.StandardTradsort = nyStandard;
+
+        // Propagera det nya trädslaget till rutorna. Rutor som ärver (saknar eget
+        // trädslag) eller som hade den gamla standarden följer med, medan medvetna
+        // per-ruta-överstyrningar (ett annat värde) lämnas orörda.
+        foreach (var delOmrade in trakt.DelOmraden)
+        {
+            bool arver = string.IsNullOrWhiteSpace(delOmrade.Tradsort);
+            bool haddeGammalStandard = !string.IsNullOrWhiteSpace(gammalStandard)
+                && string.Equals(delOmrade.Tradsort, gammalStandard, StringComparison.OrdinalIgnoreCase);
+
+            if (arver || haddeGammalStandard)
+            {
+                delOmrade.Tradsort = nyStandard;
+            }
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
 
         return Ok(new TraktTradsortDto { StandardTradsort = trakt.StandardTradsort });

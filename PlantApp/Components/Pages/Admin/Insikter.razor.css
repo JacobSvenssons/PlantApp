@@ -198,3 +198,72 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
 }
+
+/* Avvikelser / kommentarer */
+.insikter-avvikelser {
+    margin-top: 1.75rem;
+}
+
+.avvikelse-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.avvikelse {
+    padding: 0.7rem 0.85rem;
+    border-radius: var(--radius-md);
+    background: #fff;
+    border: 1px solid var(--color-border);
+    border-left: 4px solid #e0a100;
+}
+
+.avvikelse__topp {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.3rem;
+    flex-wrap: wrap;
+}
+
+.avvikelse__trakt {
+    font-weight: 600;
+    color: var(--color-text);
+    font-size: 0.9rem;
+}
+
+.avvikelse__ruta {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.avvikelse__status {
+    margin-left: auto;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--color-text-muted);
+}
+
+.avvikelse__status--klar {
+    background: #e7f4ea;
+    color: #1f4d2e;
+}
+
+.avvikelse__status--paborjad {
+    background: #fff4e0;
+    color: #8a5a00;
+}
+
+.avvikelse__text {
+    font-size: 0.88rem;
+    color: var(--color-text);
+    white-space: pre-wrap;
+}

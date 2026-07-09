@@ -414,3 +414,111 @@
     font-family: inherit;
 }
 
+/* Avvikelse-sammanfattning (admin/plantbas) – överlagd uppe till höger på kartan */
+.avvikelse-panel {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 600;
+    width: min(320px, calc(100% - 2rem));
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(2px);
+    overflow: hidden;
+}
+
+.avvikelse-panel__knapp {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.6rem 0.85rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--color-text, #1c2b22);
+}
+
+.avvikelse-panel__ikon {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.avvikelse-panel__titel {
+    font-weight: 600;
+}
+
+.avvikelse-panel__antal {
+    margin-left: auto;
+    min-width: 1.5rem;
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    background: #e0a100;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.avvikelse-panel__kropp {
+    max-height: 40vh;
+    overflow-y: auto;
+    border-top: 1px solid var(--color-border, #e5e7eb);
+    padding: 0.4rem 0.5rem 0.6rem;
+}
+
+.avvikelse-panel__tom {
+    padding: 0.6rem 0.4rem;
+    font-size: 0.85rem;
+    color: var(--color-text-muted, #5c6b60);
+}
+
+.avvikelse-panel__lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.avvikelse-panel__rad {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 0.55rem;
+    border-radius: 10px;
+    background: #fff8e8;
+    border: 1px solid #f0dcae;
+    cursor: pointer;
+    font: inherit;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.avvikelse-panel__rad:hover {
+    background: #fdeecb;
+    border-color: #e0a100;
+}
+
+.avvikelse-panel__rad:focus-visible {
+    outline: none;
+    border-color: var(--color-forest-light, #2f6b40);
+    box-shadow: 0 0 0 3px rgba(47, 107, 64, 0.18);
+}
+
+.avvikelse-panel__ruta {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #8a5a00;
+    margin-bottom: 0.15rem;
+}
+
+.avvikelse-panel__text {
+    font-size: 0.85rem;
+    color: var(--color-text, #1c2b22);
+    white-space: pre-wrap;
+}
+

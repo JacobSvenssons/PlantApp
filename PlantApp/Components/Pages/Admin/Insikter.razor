@@ -85,6 +85,11 @@
                     <div class="stat-kort__varde">@_summering.AntalProvytor.ToString("N0", CultureInfo.CurrentCulture)</div>
                     <div class="stat-kort__etikett">Provytor</div>
                 </div>
+                <div class="stat-kort">
+                    <span class="stat-kort__ikon" aria-hidden="true">⚠️</span>
+                    <div class="stat-kort__varde">@_summering.AntalAvvikelser.ToString("N0", CultureInfo.CurrentCulture)</div>
+                    <div class="stat-kort__etikett">Avvikelser</div>
+                </div>
             </div>
 
             <div class="insikter-tabell">
@@ -122,6 +127,42 @@
                             }
                         </tbody>
                     </table>
+                }
+            </div>
+
+            <div class="insikter-avvikelser">
+                <div class="insikter-tabell__rubrik">Avvikelser / kommentarer</div>
+                @{
+                    var avvikelser = _statistik
+                        .Where(t => _valda.Contains(t.TraktId))
+                        .SelectMany(t => t.Avvikelser.Select(a => (Trakt: t, Avvikelse: a)))
+                        .ToList();
+                }
+                @if (_valda.Count == 0)
+                {
+                    <div class="insikter-melding">Välj en eller flera trakter ovan för att se avvikelser.</div>
+                }
+                else if (avvikelser.Count == 0)
+                {
+                    <div class="insikter-melding">Inga avvikelser noterade på de valda trakterna.</div>
+                }
+                else
+                {
+                    <ul class="avvikelse-lista">
+                        @foreach (var post in avvikelser)
+                        {
+                            <li class="avvikelse">
+                                <div class="avvikelse__topp">
+                                    <span class="avvikelse__trakt">@post.Trakt.Namn</span>
+                                    <span class="avvikelse__ruta">Delområde #@post.Avvikelse.DelOmradeId</span>
+                                    <span class="avvikelse__status avvikelse__status--@post.Avvikelse.Status.ToLowerInvariant()">
+                                        @StatusText(post.Avvikelse.Status)
+                                    </span>
+                                </div>
+                                <div class="avvikelse__text">@post.Avvikelse.Kommentar</div>
+                            </li>
+                        }
+                    </ul>
                 }
             </div>
         }
@@ -214,9 +255,17 @@
             TotalAreal = totalAreal,
             ProcentKlar = totalAreal > 0 ? klarAreal / totalAreal * 100d : 0d,
             TotaltAntalPlantor = valda.Sum(t => t.TotaltAntalPlantor),
-            AntalProvytor = valda.Sum(t => t.AntalProvytor)
+            AntalProvytor = valda.Sum(t => t.AntalProvytor),
+            AntalAvvikelser = valda.Sum(t => t.Avvikelser.Count)
         };
     }
+
+    private static string StatusText(string status) => status switch
+    {
+        "Klar" => "Klar",
+        "Paborjad" => "Påbörjad",
+        _ => "Ej påbörjad"
+    };
 
     private sealed class TraktStatistik
     {
@@ -229,6 +278,14 @@
         public int AntalKlara { get; set; }
         public int TotaltAntalPlantor { get; set; }
         public int AntalProvytor { get; set; }
+        public List<DelOmradeAvvikelse> Avvikelser { get; set; } = new();
+    }
+
+    private sealed class DelOmradeAvvikelse
+    {
+        public int DelOmradeId { get; set; }
+        public string Kommentar { get; set; } = "";
+        public string Status { get; set; } = "";
     }
 
     private sealed class Summering
@@ -239,5 +296,6 @@
         public double ProcentKlar { get; set; }
         public int TotaltAntalPlantor { get; set; }
         public int AntalProvytor { get; set; }
+        public int AntalAvvikelser { get; set; }
     }
 }

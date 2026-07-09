@@ -147,6 +147,24 @@ export function initMap(containerId, geoJson, dotNetRef) {
     instances.set(containerId, { map, geoJsonLayer, layersById });
 }
 
+// Panorerar/zoomar till en ruta och öppnar dess rapporteringspanel. Anropas när
+// användaren klickar på en avvikelse i sammanfattningspanelen.
+export function focusFeature(featureId) {
+    for (const instance of instances.values()) {
+        const layer = instance.layersById.get(Number(featureId));
+        if (layer) {
+            const bounds = typeof layer.getBounds === "function" ? layer.getBounds() : null;
+            if (bounds && bounds.isValid()) {
+                instance.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 17 });
+            }
+            // Återanvänd klickhanteraren så att panelen öppnas för rutan.
+            layer.fire("click");
+            return true;
+        }
+    }
+    return false;
+}
+
 // Färglägger om en ruta direkt efter att status sparats i backend.
 export function updateFeatureStatus(featureId, statusValue, antalPlantor) {
     const numericStatus = normalizeStatus(statusValue);

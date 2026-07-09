@@ -34,6 +34,42 @@
 		</div>
 	}
 
+	@if (_kanSeAvvikelser && _mapReady)
+	{
+		<div class="avvikelse-panel @(_visaAvvikelser ? "avvikelse-panel--oppen" : null)">
+			<button type="button" class="avvikelse-panel__knapp" @onclick="ToggleAvvikelser"
+					aria-expanded="@_visaAvvikelser">
+				<span class="avvikelse-panel__ikon" aria-hidden="true">⚠️</span>
+				<span class="avvikelse-panel__titel">Avvikelser</span>
+				<span class="avvikelse-panel__antal">@_avvikelser.Count</span>
+			</button>
+
+			@if (_visaAvvikelser)
+			{
+				<div class="avvikelse-panel__kropp">
+					@if (_avvikelser.Count == 0)
+					{
+						<div class="avvikelse-panel__tom">Inga avvikelser noterade på trakten.</div>
+					}
+					else
+					{
+						<ul class="avvikelse-panel__lista">
+							@foreach (var avvikelse in _avvikelser)
+							{
+								<li>
+									<button type="button" class="avvikelse-panel__rad" @onclick="() => FocusAvvikelse(avvikelse.DelOmradeId)">
+										<span class="avvikelse-panel__ruta">Delområde #@avvikelse.DelOmradeId</span>
+										<span class="avvikelse-panel__text">@avvikelse.Kommentar</span>
+									</button>
+								</li>
+							}
+						</ul>
+					}
+				</div>
+			}
+		</div>
+	}
+
 	@if (_loadError is not null)
 	{
 		<div class="karta-status karta-status--fel">@_loadError</div>
@@ -66,17 +102,30 @@
 				</div>
 				<div class="falt">
 					<label for="ruta-tradsort">Trädsort</label>
-					<select id="ruta-tradsort" class="falt__input" @bind="_tradsort">
-						<option value="">
-							@(string.IsNullOrWhiteSpace(_traktStandardTradsort)
-								? "– Ej angiven –"
-								: $"Traktens standard ({_traktStandardTradsort})")
-						</option>
-						@foreach (var sort in Tradsorter.Standard)
-						{
-							<option value="@sort">@sort</option>
-						}
-					</select>
+					@if (_kanAndraTradsort)
+					{
+						<select id="ruta-tradsort" class="falt__input" @bind="_tradsort">
+							<option value="">
+								@(string.IsNullOrWhiteSpace(_traktStandardTradsort)
+									? "– Ej angiven –"
+									: $"Traktens standard ({_traktStandardTradsort})")
+							</option>
+							@foreach (var sort in Tradsorter.Standard)
+							{
+								<option value="@sort">@sort</option>
+							}
+						</select>
+					}
+					else
+					{
+						<div class="falt__varde">
+							@(string.IsNullOrWhiteSpace(_tradsort)
+								? (string.IsNullOrWhiteSpace(_traktStandardTradsort)
+									? "– Ej angiven –"
+									: $"{_traktStandardTradsort} (traktens standard)")
+								: _tradsort)
+						</div>
+					}
 				</div>
 			</div>
 
@@ -211,9 +260,15 @@
 	// Roll- och trakt-nivå-tillstånd.
 	private bool _isAdmin;
 	private bool _kanTilldela;
+	private bool _kanAndraTradsort;
+	private bool _kanSeAvvikelser;
 	private IReadOnlyList<DemoUserStore.DemoUser> _appointableUsers = [];
 	private string? _traktStandardTradsort;
 	private bool _sparTraktTradsort;
+
+	// Avvikelser/kommentarer på trakten (sammanfattning för admin/plantbas).
+	private List<DelOmradeAvvikelseDto> _avvikelser = new();
+	private bool _visaAvvikelser;
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -225,6 +280,10 @@
 			_isAdmin = user.IsInRole(DemoUserStore.RoleAdmin);
 			// Admin och plantbas får tilldela rutor till fältpersonal.
 			_kanTilldela = _isAdmin || user.IsInRole(DemoUserStore.RolePlantbas);
+			// Trädslag sätts av admin/plantbas; plantsättare ser det bara.
+			_kanAndraTradsort = _isAdmin || user.IsInRole(DemoUserStore.RolePlantbas);
+			// Avvikelse-sammanfattningen är ett översiktsverktyg för admin/plantbas.
+			_kanSeAvvikelser = _isAdmin || user.IsInRole(DemoUserStore.RolePlantbas);
 		}
 	}
 
@@ -258,6 +317,12 @@
 			catch
 			{
 				// Trakt-standarden är inte kritisk för att kartan ska fungera.
+			}
+
+			// Hämta avvikelser för sammanfattningen (endast admin/plantbas).
+			if (_kanSeAvvikelser)
+			{
+				await LoadAvvikelserAsync(client);
 			}
 
 			_mapReady = true;
@@ -385,6 +450,47 @@
 		}
 	}
 
+	// Hämtar trakten statistik och plockar ut avvikelserna för sammanfattningen.
+	private async Task LoadAvvikelserAsync(HttpClient client)
+	{
+		try
+		{
+			var statistik = await client.GetFromJsonAsync<TraktStatistikDto>(
+				$"{NavigationManager.BaseUri}api/trakt/{TraktId}/statistik");
+			_avvikelser = statistik?.Avvikelser ?? new();
+		}
+		catch
+		{
+			// Avvikelse-sammanfattningen är inte kritisk för att kartan ska fungera.
+		}
+	}
+
+	private void ToggleAvvikelser()
+	{
+		_visaAvvikelser = !_visaAvvikelser;
+	}
+
+	// Flyger till rutan på kartan och öppnar dess panel när en avvikelse klickas.
+	private async Task FocusAvvikelse(int delOmradeId)
+	{
+		if (_module is null)
+		{
+			return;
+		}
+
+		// Fäll ihop panelen så att den inte skymmer rutan man hoppar till.
+		_visaAvvikelser = false;
+
+		try
+		{
+			await _module.InvokeVoidAsync("focusFeature", delOmradeId);
+		}
+		catch
+		{
+			// Om rutan inte kan hittas i kartan är det inte kritiskt – ignorera.
+		}
+	}
+
 	private void AddProvyta()
 	{
 		_provytor.Add(null);
@@ -469,6 +575,12 @@
 				// en kort, självförsvinnande bekräftelse.
 				_selected = null;
 				ShowToast("Sparat.");
+
+				// Håll avvikelse-sammanfattningen aktuell (kommentaren kan ha ändrats).
+				if (_kanSeAvvikelser)
+				{
+					await LoadAvvikelserAsync(client);
+				}
 			}
 			else
 			{

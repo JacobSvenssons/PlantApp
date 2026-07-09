@@ -1,0 +1,176 @@
+.trakter-page {
+    min-height: calc(100vh - 3.5rem);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.trakter-card {
+    width: min(860px, 100%);
+}
+
+.trakter-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.trakter-card__brand {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.trakter-card__logo {
+    font-size: 2.25rem;
+    line-height: 1;
+}
+
+.trakter-card__titel {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.trakter-card__subtitel {
+    margin: 0.15rem 0 0;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+}
+
+.trakter-melding {
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(31, 77, 46, 0.06);
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+}
+
+.trakter-melding--fel {
+    background: #fbe9e9;
+    color: #9b1c1c;
+}
+
+.trakter-melding--ok {
+    background: #e7f4ea;
+    color: #1f4d2e;
+    margin-bottom: 1rem;
+}
+
+/* Tabell */
+.tabell {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.tabell thead th {
+    text-align: left;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 2px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.tabell tbody td {
+    padding: 0.6rem;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text);
+    vertical-align: middle;
+}
+
+.tabell__num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.tabell__actions {
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* Knappar */
+.knapp-fara {
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 0.4rem 0.85rem;
+    background: #b3261e;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.knapp-fara:hover:not(:disabled) {
+    background: #9b1c1c;
+}
+
+.knapp-fara:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.knapp-fara--sekundar {
+    background: transparent;
+    color: #b3261e;
+    border: 1px solid #e0b4b1;
+}
+
+.knapp-fara--sekundar:hover:not(:disabled) {
+    background: #fbe9e9;
+}
+
+.knapp-lank {
+    border: none;
+    background: transparent;
+    padding: 0;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.knapp-lank:hover:not(:disabled) {
+    text-decoration: underline;
+}
+
+/* Bekräfta-radering */
+.bekrafta {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4rem;
+    text-align: right;
+}
+
+.bekrafta__text {
+    font-size: 0.85rem;
+    color: var(--color-text);
+}
+
+.bekrafta__lista {
+    margin: 0;
+    padding-left: 1.1rem;
+    list-style: disc;
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+    text-align: left;
+}
+
+.bekrafta__lista li {
+    margin: 0.1rem 0;
+}
+
+.bekrafta__lista strong {
+    color: var(--color-text);
+}
+
+.bekrafta__knappar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}

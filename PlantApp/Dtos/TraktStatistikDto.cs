@@ -28,4 +28,24 @@ public class TraktStatistikDto
 
     /// <summary>Totalt antal registrerade provytor över alla delområden.</summary>
     public int AntalProvytor { get; set; }
+
+    /// <summary>
+    /// Delområden i trakten som har en kommentar/avvikelse ifylld. Låter admin och
+    /// plantbas se noteringar direkt i insikter/sammanfattning utan att klicka in på varje ruta.
+    /// </summary>
+    public List<DelOmradeAvvikelseDto> Avvikelser { get; set; } = [];
+}
+
+/// <summary>
+/// En avvikelse/kommentar på ett delområde, tillsammans med den kontext som behövs
+/// för att visa den i en sammanfattning.
+/// </summary>
+public class DelOmradeAvvikelseDto
+{
+    public int DelOmradeId { get; set; }
+
+    public string Kommentar { get; set; } = "";
+
+    /// <summary>Delområdets status, så att en avvikelse kan färgsättas efter läget.</summary>
+    public string Status { get; set; } = "";
 }
