@@ -1,0 +1,470 @@
+@page "/admin/planering"
+@rendermode InteractiveServer
+@using System.Net.Http.Json
+@using System.Globalization
+@using PlantApp.Models
+@using PlantApp.Services
+@attribute [Authorize(Roles = "Admin")]
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<PageTitle>PlantApp – Planering</PageTitle>
+
+<div class="planering-page">
+    <div class="planering-card card-soft">
+        <div class="planering-card__header">
+            <div class="planering-card__brand">
+                <span class="planering-card__logo" aria-hidden="true">📦</span>
+                <div>
+                    <h1 class="planering-card__titel">Planering</h1>
+                    <p class="planering-card__subtitel">Räkna ut behov av plantor, kartonger och pallar per trädsort.</p>
+                </div>
+            </div>
+            <a class="btn-pill btn-pill--ghost" href="/admin">Till admin</a>
+        </div>
+
+        @if (_loadError is not null)
+        {
+            <div class="planering-melding planering-melding--fel">@_loadError</div>
+        }
+        else if (_statistik is null)
+        {
+            <div class="planering-melding">Laddar trakter…</div>
+        }
+        else if (_statistik.Count == 0)
+        {
+            <div class="planering-melding">
+                Inga trakter finns ännu. Lägg till en ny trakt på
+                <a href="/admin/upload">adminsidan</a>.
+            </div>
+        }
+        else
+        {
+            <div class="planering-val">
+                <div class="planering-val__topp">
+                    <span class="planering-val__rubrik">Trakter (@_valda.Count / @_statistik.Count)</span>
+                    <div class="planering-val__knappar">
+                        <button type="button" class="knapp-lank" @onclick="MarkeraAlla">Markera alla</button>
+                        <button type="button" class="knapp-lank" @onclick="RensaVal">Rensa</button>
+                    </div>
+                </div>
+                <div class="planering-val__lista">
+                    @foreach (var trakt in _statistik)
+                    {
+                        <label class="planering-val__rad">
+                            <input type="checkbox" checked="@_valda.Contains(trakt.TraktId)"
+                                   @onchange="e => OnTraktToggle(trakt.TraktId, e)" />
+                            <span class="planering-val__namn">@trakt.Namn</span>
+                            <span class="planering-val__meta">@trakt.AntalDelomraden delområden</span>
+                        </label>
+                    }
+                </div>
+            </div>
+
+            <div class="planering-summering">
+                <div class="plan-kort">
+                    <span class="plan-kort__ikon" aria-hidden="true">🌱</span>
+                    <div class="plan-kort__varde">@TotaltBehov().ToString("N0", CultureInfo.CurrentCulture)</div>
+                    <div class="plan-kort__etikett">Plantor att beställa</div>
+                </div>
+                <div class="plan-kort">
+                    <span class="plan-kort__ikon" aria-hidden="true">📦</span>
+                    <div class="plan-kort__varde">@TotaltKartonger().ToString("N0", CultureInfo.CurrentCulture)</div>
+                    <div class="plan-kort__etikett">Kartonger</div>
+                </div>
+                <div class="plan-kort">
+                    <span class="plan-kort__ikon" aria-hidden="true">🚛</span>
+                    <div class="plan-kort__varde">@TotaltPallar().ToString("N0", CultureInfo.CurrentCulture)</div>
+                    <div class="plan-kort__etikett">Pallar</div>
+                </div>
+            </div>
+
+            <div class="planering-tabell">
+                <div class="planering-tabell__topp">
+                    <div class="planering-tabell__rubrik">Behov per trädsort</div>
+                    @if (_valda.Count > 0 && HarNagotBehov())
+                    {
+                        <button type="button" class="btn-pill btn-pill--ghost planering-tabell__export"
+                                @onclick="ExporteraTillExcel" disabled="@_exporterar">
+                            <span aria-hidden="true">📄</span>
+                            @(_exporterar ? "Exporterar…" : "Exportera till Excel")
+                        </button>
+                    }
+                </div>
+                <p class="planering-tabell__hjalp">
+                    Antal per kartong och kartonger per pall är preliminära och kan justeras. Värdena sparas inte
+                    ännu – de är tänkta att stämmas av med en skogsvårdschef innan de blir en del av appen.
+                </p>
+
+                @if (_valda.Count == 0)
+                {
+                    <div class="planering-melding">Välj en eller flera trakter ovan för att räkna ut behovet.</div>
+                }
+                else if (!HarNagotBehov())
+                {
+                    <div class="planering-melding">
+                        Inget mål plantor/ha är satt på de valda trakterna, så inget behov kan beräknas. Sätt ett mål
+                        på trakten eller delområdena i kartvyn.
+                    </div>
+                }
+                else
+                {
+                    <table class="plan-tabell">
+                        <thead>
+                            <tr>
+                                <th>Trädsort</th>
+                                <th class="plan-tabell__num">Plantor</th>
+                                <th class="plan-tabell__num">Plantor/kartong</th>
+                                <th class="plan-tabell__num">Kartonger/pall</th>
+                                <th class="plan-tabell__num">Kartonger</th>
+                                <th class="plan-tabell__num">Pallar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var cfg in _config)
+                            {
+                                var radBehov = HamtaBehov(cfg.Tradsort);
+                                var radKartonger = BeraknaKartonger(radBehov, cfg.PlantorPerKartong);
+                                var radPallar = BeraknaPallar(radKartonger, cfg.KartongerPerPall);
+                                <tr class="@(radBehov > 0 ? null : "plan-tabell__rad--tom")">
+                                    <td>@cfg.Tradsort</td>
+                                    <td class="plan-tabell__num">@radBehov.ToString("N0", CultureInfo.CurrentCulture)</td>
+                                    <td class="plan-tabell__num">
+                                        <input type="number" min="1" class="plan-input"
+                                               @bind="cfg.PlantorPerKartong" />
+                                    </td>
+                                    <td class="plan-tabell__num">
+                                        <input type="number" min="1" class="plan-input"
+                                               @bind="cfg.KartongerPerPall" />
+                                    </td>
+                                    <td class="plan-tabell__num">@radKartonger.ToString("N0", CultureInfo.CurrentCulture)</td>
+                                    <td class="plan-tabell__num">@radPallar.ToString("N0", CultureInfo.CurrentCulture)</td>
+                                </tr>
+                            }
+                            @foreach (var post in OkonfigureradeBehov())
+                            {
+                                <tr>
+                                    <td>@(post.Tradsort ?? "Ej angiven")</td>
+                                    <td class="plan-tabell__num">@post.Behov.ToString("N0", CultureInfo.CurrentCulture)</td>
+                                    <td class="plan-tabell__num">–</td>
+                                    <td class="plan-tabell__num">–</td>
+                                    <td class="plan-tabell__num">–</td>
+                                    <td class="plan-tabell__num">–</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<TraktStatistik>? _statistik;
+    private readonly HashSet<int> _valda = new();
+    private string? _loadError;
+
+    // Preliminär konfiguration – en post per trädsort. Sparas inte i databasen ännu.
+    private readonly List<TradsortConfig> _config = Tradsorter.Standard
+        .Select(t => new TradsortConfig
+        {
+            Tradsort = t,
+            PlantorPerKartong = 300,
+            KartongerPerPall = 16
+        })
+        .ToList();
+
+    // Aggregerat plantbehov per effektiv trädsort för de valda trakterna.
+    private List<BehovPost> _behov = new();
+
+    private IJSObjectReference? _module;
+    private bool _exporterar;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            _statistik = await client.GetFromJsonAsync<List<TraktStatistik>>(
+                $"{NavigationManager.BaseUri}api/trakt/statistik");
+
+            // Markera alla trakter som standard så vyn visar en helhet direkt.
+            if (_statistik is not null)
+            {
+                foreach (var trakt in _statistik)
+                {
+                    _valda.Add(trakt.TraktId);
+                }
+                RaknaOmBehov();
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Kunde inte hämta trakter: {ex.Message}";
+        }
+    }
+
+    private void OnTraktToggle(int traktId, ChangeEventArgs e)
+    {
+        if ((bool)(e.Value ?? false))
+        {
+            _valda.Add(traktId);
+        }
+        else
+        {
+            _valda.Remove(traktId);
+        }
+
+        RaknaOmBehov();
+    }
+
+    private void MarkeraAlla()
+    {
+        if (_statistik is null)
+        {
+            return;
+        }
+
+        foreach (var trakt in _statistik)
+        {
+            _valda.Add(trakt.TraktId);
+        }
+
+        RaknaOmBehov();
+    }
+
+    private void RensaVal()
+    {
+        _valda.Clear();
+        RaknaOmBehov();
+    }
+
+    // Summerar målantal plantor per effektiv trädsort över de valda trakterna.
+    private void RaknaOmBehov()
+    {
+        if (_statistik is null)
+        {
+            _behov = new();
+            return;
+        }
+
+        _behov = _statistik
+            .Where(t => _valda.Contains(t.TraktId))
+            .SelectMany(t => t.MalPerTradsort)
+            .GroupBy(m => m.Tradsort, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new BehovPost
+            {
+                Tradsort = g.Key,
+                Behov = g.Sum(m => m.MalTotaltAntalPlantor)
+            })
+            .ToList();
+    }
+
+    private bool HarNagotBehov() => _behov.Sum(b => b.Behov) > 0;
+
+    // Behov för en konfigurerad trädsort (matchas skiftlägesokänsligt).
+    private int HamtaBehov(string tradsort) => _behov
+        .Where(b => string.Equals(b.Tradsort, tradsort, StringComparison.OrdinalIgnoreCase))
+        .Sum(b => b.Behov);
+
+    // Behovsposter som inte matchar någon konfigurerad trädsort (t.ex. saknad trädsort).
+    private IEnumerable<BehovPost> OkonfigureradeBehov() => _behov
+        .Where(b => b.Behov > 0
+            && !_config.Any(c => string.Equals(c.Tradsort, b.Tradsort, StringComparison.OrdinalIgnoreCase)))
+        .OrderBy(b => b.Tradsort ?? "\uffff");
+
+    private static int BeraknaKartonger(int behov, int plantorPerKartong) =>
+        behov > 0 && plantorPerKartong > 0
+            ? (int)Math.Ceiling((double)behov / plantorPerKartong)
+            : 0;
+
+    private static int BeraknaPallar(int kartonger, int kartongerPerPall) =>
+        kartonger > 0 && kartongerPerPall > 0
+            ? (int)Math.Ceiling((double)kartonger / kartongerPerPall)
+            : 0;
+
+    private int TotaltBehov() => _behov.Sum(b => b.Behov);
+
+    private int TotaltKartonger() => _config.Sum(c => BeraknaKartonger(HamtaBehov(c.Tradsort), c.PlantorPerKartong));
+
+    private int TotaltPallar() => _config.Sum(c =>
+        BeraknaPallar(BeraknaKartonger(HamtaBehov(c.Tradsort), c.PlantorPerKartong), c.KartongerPerPall));
+
+    // Bygger en xlsx (med flera flikar) av planeringen och laddar ner den via JS-interop.
+    private async Task ExporteraTillExcel()
+    {
+        if (_exporterar || !HarNagotBehov())
+        {
+            return;
+        }
+
+        _exporterar = true;
+        try
+        {
+            var sheets = new List<SimpleXlsx.Sheet>
+            {
+                ByggSammanfattningsblad(),
+                ByggBehovsblad(),
+                ByggTraktblad()
+            };
+
+            var bytes = SimpleXlsx.Create(sheets);
+            var base64 = Convert.ToBase64String(bytes);
+            var filnamn = $"planering-behov-{DateTime.Now:yyyy-MM-dd}.xlsx";
+
+            _module ??= await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./Components/Pages/Admin/Planering.razor.js");
+            await _module.InvokeVoidAsync(
+                "downloadFile",
+                filnamn,
+                base64,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Kunde inte exportera: {ex.Message}";
+        }
+        finally
+        {
+            _exporterar = false;
+        }
+    }
+
+    // Flik 1: sammanfattning med totalerna som visas i korten högst upp.
+    private SimpleXlsx.Sheet ByggSammanfattningsblad()
+    {
+        var rows = new List<IReadOnlyList<SimpleXlsx.Cell>>
+        {
+            new[] { SimpleXlsx.Cell.Str("Antal valda trakter"), SimpleXlsx.Cell.Num(_valda.Count) },
+            new[] { SimpleXlsx.Cell.Str("Plantor att beställa"), SimpleXlsx.Cell.Num(TotaltBehov()) },
+            new[] { SimpleXlsx.Cell.Str("Kartonger"), SimpleXlsx.Cell.Num(TotaltKartonger()) },
+            new[] { SimpleXlsx.Cell.Str("Pallar"), SimpleXlsx.Cell.Num(TotaltPallar()) }
+        };
+
+        return new SimpleXlsx.Sheet(
+            "Sammanfattning",
+            new[] { "Nyckeltal", "Värde" },
+            rows);
+    }
+
+    // Flik 2: behov per trädsort (samma tabell som visas på sidan).
+    private SimpleXlsx.Sheet ByggBehovsblad()
+    {
+        var headers = new[]
+        {
+            "Trädsort", "Plantor", "Plantor/kartong", "Kartonger/pall", "Kartonger", "Pallar"
+        };
+
+        var rows = new List<IReadOnlyList<SimpleXlsx.Cell>>();
+
+        foreach (var cfg in _config)
+        {
+            var radBehov = HamtaBehov(cfg.Tradsort);
+            var radKartonger = BeraknaKartonger(radBehov, cfg.PlantorPerKartong);
+            var radPallar = BeraknaPallar(radKartonger, cfg.KartongerPerPall);
+            rows.Add(new[]
+            {
+                SimpleXlsx.Cell.Str(cfg.Tradsort),
+                SimpleXlsx.Cell.Num(radBehov),
+                SimpleXlsx.Cell.Num(cfg.PlantorPerKartong),
+                SimpleXlsx.Cell.Num(cfg.KartongerPerPall),
+                SimpleXlsx.Cell.Num(radKartonger),
+                SimpleXlsx.Cell.Num(radPallar)
+            });
+        }
+
+        foreach (var post in OkonfigureradeBehov())
+        {
+            rows.Add(new[]
+            {
+                SimpleXlsx.Cell.Str(post.Tradsort ?? "Ej angiven"),
+                SimpleXlsx.Cell.Num(post.Behov),
+                SimpleXlsx.Cell.Empty,
+                SimpleXlsx.Cell.Empty,
+                SimpleXlsx.Cell.Empty,
+                SimpleXlsx.Cell.Empty
+            });
+        }
+
+        // Summarad.
+        rows.Add(new[]
+        {
+            SimpleXlsx.Cell.Str("Totalt"),
+            SimpleXlsx.Cell.Num(TotaltBehov()),
+            SimpleXlsx.Cell.Empty,
+            SimpleXlsx.Cell.Empty,
+            SimpleXlsx.Cell.Num(TotaltKartonger()),
+            SimpleXlsx.Cell.Num(TotaltPallar())
+        });
+
+        return new SimpleXlsx.Sheet("Behov per trädsort", headers, rows);
+    }
+
+    // Flik 3: de trakter som ingår i beräkningen.
+    private SimpleXlsx.Sheet ByggTraktblad()
+    {
+        var rows = new List<IReadOnlyList<SimpleXlsx.Cell>>();
+
+        if (_statistik is not null)
+        {
+            foreach (var trakt in _statistik.Where(t => _valda.Contains(t.TraktId)))
+            {
+                rows.Add(new[]
+                {
+                    SimpleXlsx.Cell.Str(trakt.Namn),
+                    SimpleXlsx.Cell.Num(trakt.AntalDelomraden)
+                });
+            }
+        }
+
+        return new SimpleXlsx.Sheet(
+            "Valda trakter",
+            new[] { "Trakt", "Delområden" },
+            rows);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is not null)
+        {
+            try
+            {
+                await _module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Kretsen är redan nedkopplad – inget att städa.
+            }
+        }
+    }
+
+    private sealed class TradsortConfig
+    {
+        public string Tradsort { get; set; } = "";
+        public int PlantorPerKartong { get; set; }
+        public int KartongerPerPall { get; set; }
+    }
+
+    private sealed class BehovPost
+    {
+        public string? Tradsort { get; set; }
+        public int Behov { get; set; }
+    }
+
+    private sealed class TraktStatistik
+    {
+        public int TraktId { get; set; }
+        public string Namn { get; set; } = "";
+        public int AntalDelomraden { get; set; }
+        public List<MalPerTradsort> MalPerTradsort { get; set; } = new();
+    }
+
+    private sealed class MalPerTradsort
+    {
+        public string? Tradsort { get; set; }
+        public int MalTotaltAntalPlantor { get; set; }
+    }
+}

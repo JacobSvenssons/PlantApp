@@ -14,7 +14,14 @@ public interface IShapefileService
     /// </summary>
     /// <param name="zipFile">Uppladdat zip-arkiv som innehåller .shp, .shx och .dbf.</param>
     /// <param name="traktNamn">Valfritt namn på trakten; annars används zip-filens namn.</param>
+    /// <param name="standardTradsort">Valfri standardträdsort för trakten som delområdena ärver.</param>
+    /// <param name="malPlantorPerHektar">Valfritt mål plantor per hektar för trakten som delområdena ärver.</param>
     /// <param name="cancellationToken">Avbrytningstoken.</param>
     /// <returns>Den sparade trakten inklusive genererade id:n.</returns>
-    Task<Trakt> ImportZippedShapefileAsync(IFormFile zipFile, string? traktNamn, CancellationToken cancellationToken = default);
+    Task<Trakt> ImportZippedShapefileAsync(
+        IFormFile zipFile,
+        string? traktNamn,
+        string? standardTradsort = null,
+        int? malPlantorPerHektar = null,
+        CancellationToken cancellationToken = default);
 }

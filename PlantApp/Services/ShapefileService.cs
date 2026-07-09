@@ -33,12 +33,17 @@ public sealed class ShapefileService : IShapefileService
     public async Task<Trakt> ImportZippedShapefileAsync(
         IFormFile zipFile,
         string? traktNamn,
+        string? standardTradsort = null,
+        int? malPlantorPerHektar = null,
         CancellationToken cancellationToken = default)
     {
         if (zipFile is null || zipFile.Length == 0)
         {
             throw new ArgumentException("Ingen fil laddades upp eller filen är tom.", nameof(zipFile));
         }
+
+        var normaliseradTradsort = string.IsNullOrWhiteSpace(standardTradsort) ? null : standardTradsort.Trim();
+        var normaliseratMal = malPlantorPerHektar is > 0 ? malPlantorPerHektar : null;
 
         var tempDir = Path.Combine(Path.GetTempPath(), "plantapp_shp_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
@@ -70,6 +75,8 @@ public sealed class ShapefileService : IShapefileService
                     : traktNamn.Trim(),
                 SkapadDatum = DateTime.UtcNow,
                 Status = TraktStatus.Planerad,
+                StandardTradsort = normaliseradTradsort,
+                MalPlantorPerHektar = normaliseratMal,
                 DelOmraden = delOmraden
             };
 

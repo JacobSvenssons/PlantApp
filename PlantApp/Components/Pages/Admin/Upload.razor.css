@@ -51,6 +51,11 @@
     color: var(--color-text-muted);
 }
 
+.upload-falt__hint {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
 .upload-input {
     padding: 0.7rem 0.85rem;
     border-radius: var(--radius-md);

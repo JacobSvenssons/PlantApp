@@ -33,6 +33,14 @@ public class TraktStatistikDto
     /// </summary>
     public int MalTotaltAntalPlantor { get; set; }
 
+    /// <summary>
+    /// Målantal plantor uppdelat per effektiv trädsort. Används av planeringsvyn för
+    /// att beräkna behov av kartonger och pallar per trädsort. Summan av posternas
+    /// <see cref="MalPerTradsortDto.MalTotaltAntalPlantor"/> motsvarar
+    /// <see cref="MalTotaltAntalPlantor"/>.
+    /// </summary>
+    public List<MalPerTradsortDto> MalPerTradsort { get; set; } = [];
+
     /// <summary>Totalt antal registrerade provytor över alla delområden.</summary>
     public int AntalProvytor { get; set; }
 
@@ -55,4 +63,18 @@ public class DelOmradeAvvikelseDto
 
     /// <summary>Delområdets status, så att en avvikelse kan färgsättas efter läget.</summary>
     public string Status { get; set; } = "";
+}
+
+/// <summary>
+/// Målantal plantor för en enskild trädsort inom en trakt. Trädsorten är den effektiva
+/// trädsorten (delområdets egen i första hand, annars traktens standard). Delområden
+/// utan angiven trädsort samlas under <c>null</c>.
+/// </summary>
+public class MalPerTradsortDto
+{
+    /// <summary>Trädsort, t.ex. "Tall". Null om ingen trädsort är angiven.</summary>
+    public string? Tradsort { get; set; }
+
+    /// <summary>Målantal plantor för trädsorten, avrundat till heltal.</summary>
+    public int MalTotaltAntalPlantor { get; set; }
 }

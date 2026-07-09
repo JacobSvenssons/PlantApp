@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Roles = "Admin")]
 @using System.Net.Http.Headers
+@using PlantApp.Models
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
 
@@ -22,6 +23,25 @@
 			<label for="trakt-namn">Traktnamn (valfritt)</label>
 			<input id="trakt-namn" class="upload-input" @bind="_traktNamn"
 				   placeholder="Lämna tomt för att använda filnamnet" />
+		</div>
+
+		<div class="upload-falt">
+			<label for="trakt-tradsort">Trädsort (valfritt)</label>
+			<select id="trakt-tradsort" class="upload-input" @bind="_standardTradsort">
+				<option value="">– Ingen standard –</option>
+				@foreach (var sort in Tradsorter.Standard)
+				{
+					<option value="@sort">@sort</option>
+				}
+			</select>
+			<span class="upload-falt__hint">Ärvs av alla delområden. Kan ändras per delområde senare.</span>
+		</div>
+
+		<div class="upload-falt">
+			<label for="trakt-mal">Mål plantor/ha (valfritt)</label>
+			<input id="trakt-mal" type="number" min="0" class="upload-input" @bind="_malPlantorPerHektar"
+				   placeholder="T.ex. 2100" />
+			<span class="upload-falt__hint">Ärvs av alla delområden. Kan ändras per delområde senare.</span>
 		</div>
 
 		<div class="upload-falt">
@@ -58,6 +78,8 @@
 
 	private IBrowserFile? _selectedFile;
 	private string? _traktNamn;
+	private string? _standardTradsort;
+	private int? _malPlantorPerHektar;
 	private bool _uploading;
 	private bool _isError;
 	private string? _message;
@@ -97,6 +119,18 @@
 			if (!string.IsNullOrWhiteSpace(_traktNamn))
 			{
 				content.Add(new StringContent(_traktNamn.Trim()), "namn");
+			}
+
+			if (!string.IsNullOrWhiteSpace(_standardTradsort))
+			{
+				content.Add(new StringContent(_standardTradsort), "standardTradsort");
+			}
+
+			if (_malPlantorPerHektar is > 0)
+			{
+				content.Add(new StringContent(
+					_malPlantorPerHektar.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+					"malPlantorPerHektar");
 			}
 
 			var client = HttpClientFactory.CreateClient();

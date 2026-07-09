@@ -1,0 +1,253 @@
+.planering-page {
+    min-height: calc(100vh - 3.5rem);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.planering-card {
+    width: min(940px, 100%);
+}
+
+.planering-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.planering-card__brand {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.planering-card__logo {
+    font-size: 2.25rem;
+    line-height: 1;
+}
+
+.planering-card__titel {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.planering-card__subtitel {
+    margin: 0.15rem 0 0;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+}
+
+.planering-melding {
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(31, 77, 46, 0.06);
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+}
+
+.planering-melding--fel {
+    background: #fbe9e9;
+    color: #9b1c1c;
+}
+
+/* Trakt-väljare */
+.planering-val {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: linear-gradient(180deg, rgba(47, 107, 64, 0.05), rgba(47, 107, 64, 0.02));
+}
+
+.planering-val__topp {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.planering-val__rubrik {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-text-muted);
+}
+
+.planering-val__knappar {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.knapp-lank {
+    border: none;
+    background: transparent;
+    padding: 0;
+    color: var(--color-forest-light);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.knapp-lank:hover {
+    text-decoration: underline;
+}
+
+.planering-val__lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.5rem;
+}
+
+.planering-val__rad {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: var(--radius-md);
+    background: #fff;
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+}
+
+.planering-val__namn {
+    font-weight: 600;
+    color: var(--color-text);
+    font-size: 0.92rem;
+}
+
+.planering-val__meta {
+    margin-left: auto;
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+}
+
+/* Sammanfattning */
+.planering-summering {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.7rem;
+    margin-bottom: 1.75rem;
+}
+
+.plan-kort {
+    padding: 0.85rem 0.5rem;
+    border-radius: var(--radius-md);
+    background: #fff;
+    border: 1px solid var(--color-border);
+    text-align: center;
+}
+
+.plan-kort__ikon {
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.plan-kort__varde {
+    margin-top: 0.35rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.plan-kort__etikett {
+    margin-top: 0.15rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-text-muted);
+}
+
+/* Behov per trädsort */
+.planering-tabell__topp {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.4rem;
+}
+
+.planering-tabell__rubrik {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-text-muted);
+    margin-bottom: 0.4rem;
+}
+
+.planering-tabell__topp .planering-tabell__rubrik {
+    margin-bottom: 0;
+}
+
+.planering-tabell__export {
+    padding: 0.45rem 1rem;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.planering-tabell__hjalp {
+    margin: 0 0 0.9rem;
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+}
+
+.plan-tabell {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.plan-tabell thead th {
+    text-align: left;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 2px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.plan-tabell tbody td {
+    padding: 0.55rem 0.6rem;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text);
+}
+
+.plan-tabell__num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* Numeriska rubriker måste vara mer specifika än ".plan-tabell thead th"
+   (som är vänsterställd) för att linjera rakt ovanför sina högerställda celler. */
+.plan-tabell thead th.plan-tabell__num {
+    text-align: right;
+}
+
+.plan-tabell__rad--tom td {
+    color: var(--color-text-muted);
+}
+
+.plan-input {
+    width: 5rem;
+    padding: 0.3rem 0.4rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 0.88rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    background: #fff;
+    color: var(--color-text);
+}
+
+.plan-input:focus {
+    outline: none;
+    border-color: var(--color-forest-light);
+    box-shadow: 0 0 0 2px rgba(47, 107, 64, 0.15);
+}

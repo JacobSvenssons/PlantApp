@@ -40,6 +40,8 @@ public class TraktController : ControllerBase
     public async Task<IActionResult> Upload(
         IFormFile file,
         [FromForm] string? namn,
+        [FromForm] string? standardTradsort,
+        [FromForm] int? malPlantorPerHektar,
         CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)
@@ -53,7 +55,8 @@ public class TraktController : ControllerBase
         {
             var trakt = extension switch
             {
-                ".zip" => await _shapefileService.ImportZippedShapefileAsync(file, namn, cancellationToken),
+                ".zip" => await _shapefileService.ImportZippedShapefileAsync(
+                    file, namn, standardTradsort, malPlantorPerHektar, cancellationToken),
                 ".pdf" => await _geoPdfService.ImportGeoPdfAsync(file, namn, cancellationToken),
                 _ => throw new ArgumentException(
                     "Filformatet stöds inte. Ladda upp en zippad shapefil (.zip) eller en GeoPDF (.pdf).")
@@ -226,6 +229,23 @@ public class TraktController : ControllerBase
             return malPerHektar is > 0 ? malPerHektar.Value * d.Areal : 0d;
         });
 
+        // Samma målberäkning uppdelad per effektiv trädsort (delområdets egen i första
+        // hand, annars traktens standard). Används av planeringsvyn för kartong-/pallbehov.
+        var malPerTradsort = delomraden
+            .GroupBy(d => d.Tradsort ?? trakt.StandardTradsort)
+            .Select(g => new MalPerTradsortDto
+            {
+                Tradsort = string.IsNullOrWhiteSpace(g.Key) ? null : g.Key,
+                MalTotaltAntalPlantor = (int)Math.Round(g.Sum(d =>
+                {
+                    var malPerHektar = d.MalPlantorPerHektar ?? trakt.MalPlantorPerHektar;
+                    return malPerHektar is > 0 ? malPerHektar.Value * d.Areal : 0d;
+                }))
+            })
+            .Where(m => m.MalTotaltAntalPlantor > 0)
+            .OrderBy(m => m.Tradsort ?? "\uffff")
+            .ToList();
+
         return new TraktStatistikDto
         {
             TraktId = trakt.Id,
@@ -237,6 +257,7 @@ public class TraktController : ControllerBase
             AntalKlara = delomraden.Count(d => d.Status == PlantApp.Models.DelOmradeStatus.Klar),
             TotaltAntalPlantor = delomraden.Sum(d => d.AntalPlantor ?? 0),
             MalTotaltAntalPlantor = (int)Math.Round(malTotaltAntalPlantor),
+            MalPerTradsort = malPerTradsort,
             AntalProvytor = delomraden.Sum(d => d.Provytor.Count),
             Avvikelser = delomraden
                 .Where(d => !string.IsNullOrWhiteSpace(d.Kommentar))
