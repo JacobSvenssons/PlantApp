@@ -32,9 +32,12 @@ public sealed class CoordinateTransformer : ICoordinateTransformer
             "AXIS[\"Northing\",NORTH]]";
 
     private const int Wgs84Srid = 4326;
+    private const int Sweref99TmSrid = 3006;
 
     private readonly MathTransform _toWgs84;
+    private readonly MathTransform _toSweref99Tm;
     private readonly GeometryFactory _wgs84Factory;
+    private readonly GeometryFactory _sweref99TmFactory;
 
     public CoordinateTransformer()
     {
@@ -44,8 +47,10 @@ public sealed class CoordinateTransformer : ICoordinateTransformer
 
         var ctFactory = new CoordinateTransformationFactory();
         _toWgs84 = ctFactory.CreateFromCoordinateSystems(sweref99Tm, wgs84).MathTransform;
+        _toSweref99Tm = ctFactory.CreateFromCoordinateSystems(wgs84, sweref99Tm).MathTransform;
 
         _wgs84Factory = NtsGeometryServices.Instance.CreateGeometryFactory(Wgs84Srid);
+        _sweref99TmFactory = NtsGeometryServices.Instance.CreateGeometryFactory(Sweref99TmSrid);
     }
 
     public Polygon ToWgs84(Polygon source)
@@ -60,6 +65,22 @@ public sealed class CoordinateTransformer : ICoordinateTransformer
         }
 
         return _wgs84Factory.CreatePolygon(shell, holes);
+    }
+
+    public Point ToWgs84(Point source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        // SWEREF99 TM: X = Easting, Y = Northing  ->  WGS84: X = longitud, Y = latitud.
+        var (lon, lat) = _toWgs84.Transform(source.X, source.Y);
+        return _wgs84Factory.CreatePoint(new Coordinate(lon, lat));
+    }
+
+    public Point ToSweref99Tm(double longitude, double latitude)
+    {
+        // WGS84: X = longitud, Y = latitud  ->  SWEREF99 TM: X = Easting, Y = Northing.
+        var (easting, northing) = _toSweref99Tm.Transform(longitude, latitude);
+        return _sweref99TmFactory.CreatePoint(new Coordinate(easting, northing));
     }
 
     private LinearRing TransformRing(LineString ring)

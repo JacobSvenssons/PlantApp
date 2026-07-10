@@ -306,9 +306,7 @@
         {
             var sheets = new List<SimpleXlsx.Sheet>
             {
-                ByggSammanfattningsblad(),
-                ByggBehovsblad(),
-                ByggTraktblad()
+                ByggBehovsblad()
             };
 
             var bytes = SimpleXlsx.Create(sheets);
@@ -333,66 +331,74 @@
         }
     }
 
-    // Flik 1: sammanfattning med totalerna som visas i korten högst upp.
-    private SimpleXlsx.Sheet ByggSammanfattningsblad()
-    {
-        var rows = new List<IReadOnlyList<SimpleXlsx.Cell>>
-        {
-            new[] { SimpleXlsx.Cell.Str("Antal valda trakter"), SimpleXlsx.Cell.Num(_valda.Count) },
-            new[] { SimpleXlsx.Cell.Str("Plantor att beställa"), SimpleXlsx.Cell.Num(TotaltBehov()) },
-            new[] { SimpleXlsx.Cell.Str("Kartonger"), SimpleXlsx.Cell.Num(TotaltKartonger()) },
-            new[] { SimpleXlsx.Cell.Str("Pallar"), SimpleXlsx.Cell.Num(TotaltPallar()) }
-        };
-
-        return new SimpleXlsx.Sheet(
-            "Sammanfattning",
-            new[] { "Nyckeltal", "Värde" },
-            rows);
-    }
-
-    // Flik 2: behov per trädsort (samma tabell som visas på sidan).
+    // Enda fliken: totalt behov nedbrutet per trakt och trädsort.
     private SimpleXlsx.Sheet ByggBehovsblad()
     {
         var headers = new[]
         {
-            "Trädsort", "Plantor", "Plantor/kartong", "Kartonger/pall", "Kartonger", "Pallar"
+            "Trakt", "Trädsort", "Plantor", "Plantor/kartong", "Kartonger/pall", "Kartonger", "Pallar"
         };
 
         var rows = new List<IReadOnlyList<SimpleXlsx.Cell>>();
 
-        foreach (var cfg in _config)
+        if (_statistik is not null)
         {
-            var radBehov = HamtaBehov(cfg.Tradsort);
-            var radKartonger = BeraknaKartonger(radBehov, cfg.PlantorPerKartong);
-            var radPallar = BeraknaPallar(radKartonger, cfg.KartongerPerPall);
-            rows.Add(new[]
+            var valdaTrakter = _statistik
+                .Where(t => _valda.Contains(t.TraktId))
+                .OrderBy(t => t.Namn);
+
+            foreach (var trakt in valdaTrakter)
             {
-                SimpleXlsx.Cell.Str(cfg.Tradsort),
-                SimpleXlsx.Cell.Num(radBehov),
-                SimpleXlsx.Cell.Num(cfg.PlantorPerKartong),
-                SimpleXlsx.Cell.Num(cfg.KartongerPerPall),
-                SimpleXlsx.Cell.Num(radKartonger),
-                SimpleXlsx.Cell.Num(radPallar)
-            });
+                // Summera målantal plantor per effektiv trädsort inom just denna trakt.
+                var perTradsort = trakt.MalPerTradsort
+                    .Where(m => m.MalTotaltAntalPlantor > 0)
+                    .GroupBy(m => m.Tradsort, StringComparer.OrdinalIgnoreCase)
+                    .Select(g => new { Tradsort = g.Key, Behov = g.Sum(m => m.MalTotaltAntalPlantor) })
+                    .OrderBy(x => x.Tradsort ?? "\uffff");
+
+                foreach (var post in perTradsort)
+                {
+                    var cfg = _config.FirstOrDefault(c =>
+                        string.Equals(c.Tradsort, post.Tradsort, StringComparison.OrdinalIgnoreCase));
+
+                    if (cfg is not null)
+                    {
+                        var kartonger = BeraknaKartonger(post.Behov, cfg.PlantorPerKartong);
+                        var pallar = BeraknaPallar(kartonger, cfg.KartongerPerPall);
+                        rows.Add(new[]
+                        {
+                            SimpleXlsx.Cell.Str(trakt.Namn),
+                            SimpleXlsx.Cell.Str(cfg.Tradsort),
+                            SimpleXlsx.Cell.Num(post.Behov),
+                            SimpleXlsx.Cell.Num(cfg.PlantorPerKartong),
+                            SimpleXlsx.Cell.Num(cfg.KartongerPerPall),
+                            SimpleXlsx.Cell.Num(kartonger),
+                            SimpleXlsx.Cell.Num(pallar)
+                        });
+                    }
+                    else
+                    {
+                        // Trädsort utan konfiguration (t.ex. ej angiven) – bara behovet.
+                        rows.Add(new[]
+                        {
+                            SimpleXlsx.Cell.Str(trakt.Namn),
+                            SimpleXlsx.Cell.Str(post.Tradsort ?? "Ej angiven"),
+                            SimpleXlsx.Cell.Num(post.Behov),
+                            SimpleXlsx.Cell.Empty,
+                            SimpleXlsx.Cell.Empty,
+                            SimpleXlsx.Cell.Empty,
+                            SimpleXlsx.Cell.Empty
+                        });
+                    }
+                }
+            }
         }
 
-        foreach (var post in OkonfigureradeBehov())
-        {
-            rows.Add(new[]
-            {
-                SimpleXlsx.Cell.Str(post.Tradsort ?? "Ej angiven"),
-                SimpleXlsx.Cell.Num(post.Behov),
-                SimpleXlsx.Cell.Empty,
-                SimpleXlsx.Cell.Empty,
-                SimpleXlsx.Cell.Empty,
-                SimpleXlsx.Cell.Empty
-            });
-        }
-
-        // Summarad.
+        // Summarad över alla valda trakter.
         rows.Add(new[]
         {
             SimpleXlsx.Cell.Str("Totalt"),
+            SimpleXlsx.Cell.Empty,
             SimpleXlsx.Cell.Num(TotaltBehov()),
             SimpleXlsx.Cell.Empty,
             SimpleXlsx.Cell.Empty,
@@ -400,30 +406,7 @@
             SimpleXlsx.Cell.Num(TotaltPallar())
         });
 
-        return new SimpleXlsx.Sheet("Behov per trädsort", headers, rows);
-    }
-
-    // Flik 3: de trakter som ingår i beräkningen.
-    private SimpleXlsx.Sheet ByggTraktblad()
-    {
-        var rows = new List<IReadOnlyList<SimpleXlsx.Cell>>();
-
-        if (_statistik is not null)
-        {
-            foreach (var trakt in _statistik.Where(t => _valda.Contains(t.TraktId)))
-            {
-                rows.Add(new[]
-                {
-                    SimpleXlsx.Cell.Str(trakt.Namn),
-                    SimpleXlsx.Cell.Num(trakt.AntalDelomraden)
-                });
-            }
-        }
-
-        return new SimpleXlsx.Sheet(
-            "Valda trakter",
-            new[] { "Trakt", "Delområden" },
-            rows);
+        return new SimpleXlsx.Sheet("Totalt behov", headers, rows);
     }
 
     public async ValueTask DisposeAsync()

@@ -84,6 +84,32 @@ export function initMap(containerId, geoJson, dotNetRef) {
 
     const layersById = new Map();
 
+    // Skapa instans-objektet tidigt så att både polygon-klick och kart-klick kan läsa
+    // 'picking'-flaggan (markeringsläge). geoJsonLayer sätts när lagret byggts.
+    const instance = {
+        map,
+        geoJsonLayer: null,
+        layersById,
+        dotNetRef,
+        provytaLayer: null,   // sparade provytor (från servern)
+        tempMarkers: [],      // temporära markörer i den öppna panelen
+        picking: false        // sant medan användaren markerar en provytas plats
+    };
+
+    // Skickar ett kartklick (WGS84) till Blazor som en provyta-markering och
+    // avslutar markeringsläget. Delas av kart-klick och polygon-klick.
+    async function handlePick(latlng) {
+        instance.picking = false;
+        if (instance.map?.getContainer) {
+            instance.map.getContainer().style.cursor = "";
+        }
+        try {
+            await dotNetRef.invokeMethodAsync("OnMapPointPicked", latlng.lat, latlng.lng);
+        } catch (err) {
+            console.error("Kunde inte skicka provyta-markering till Blazor:", err);
+        }
+    }
+
     const data = typeof geoJson === "string" ? JSON.parse(geoJson) : geoJson;
 
     const geoJsonLayer = L.geoJSON(data, {
@@ -100,7 +126,18 @@ export function initMap(containerId, geoJson, dotNetRef) {
                 layersById.set(Number(featureId), layer);
             }
 
-            layer.on("click", async () => {
+            layer.on("click", async (e) => {
+                // I markeringsläge ska klick på en ruta sätta provytans plats i stället
+                // för att öppna rapporteringspanelen. Stoppa också vidare spridning så
+                // att kartans egen click-hanterare inte kör två gånger.
+                if (instance.picking) {
+                    if (e?.originalEvent) {
+                        L.DomEvent.stopPropagation(e);
+                    }
+                    await handlePick(e.latlng);
+                    return;
+                }
+
                 try {
                     await dotNetRef.invokeMethodAsync("OnFeatureClicked", {
                         id: featureId,
@@ -144,11 +181,108 @@ export function initMap(containerId, geoJson, dotNetRef) {
         map.setView([62.0, 15.0], 5);
     }
 
-    instances.set(containerId, { map, geoJsonLayer, layersById });
+    // Koppla det byggda lagret till instansen (klickhanterarna använder redan 'instance').
+    instance.geoJsonLayer = geoJsonLayer;
+
+    // Kartklick utanför rutorna i markeringsläge -> sätt provytans plats.
+    map.on("click", async (e) => {
+        if (!instance.picking) {
+            return;
+        }
+        await handlePick(e.latlng);
+    });
+
+    instances.set(containerId, instance);
 }
 
-// Panorerar/zoomar till en ruta och öppnar dess rapporteringspanel. Anropas när
-// användaren klickar på en avvikelse i sammanfattningspanelen.
+// Startar markeringsläge: nästa klick i kartan blir en provytas plats.
+export function startPointPicking() {
+    for (const instance of instances.values()) {
+        instance.picking = true;
+        if (instance.map?.getContainer) {
+            instance.map.getContainer().style.cursor = "crosshair";
+        }
+    }
+}
+
+// Avbryter markeringsläget utan att sätta någon plats.
+export function cancelPointPicking() {
+    for (const instance of instances.values()) {
+        instance.picking = false;
+        if (instance.map?.getContainer) {
+            instance.map.getContainer().style.cursor = "";
+        }
+    }
+}
+
+// Ritar de temporära markörerna för provytorna i den öppna panelen.
+// punkter: [{ index, lat, lng }]
+export function setTempProvytaMarkorer(punkter) {
+    for (const instance of instances.values()) {
+        for (const marker of instance.tempMarkers) {
+            instance.map.removeLayer(marker);
+        }
+        instance.tempMarkers = [];
+
+        if (instance.map?.getContainer) {
+            instance.map.getContainer().style.cursor = "";
+        }
+
+        for (const p of punkter ?? []) {
+            const marker = L.marker([p.lat, p.lng], {
+                title: `Provyta #${(p.index ?? 0) + 1}`
+            }).addTo(instance.map);
+            marker.bindTooltip(`#${(p.index ?? 0) + 1}`, { permanent: false });
+            instance.tempMarkers.push(marker);
+        }
+    }
+}
+
+// Ritar det sparade provyta-lagret (GeoJSON-punkter) på kartan.
+export function setProvytaLager(geoJson) {
+    const data = typeof geoJson === "string" ? JSON.parse(geoJson) : geoJson;
+    for (const instance of instances.values()) {
+        if (instance.provytaLayer) {
+            instance.map.removeLayer(instance.provytaLayer);
+            instance.provytaLayer = null;
+        }
+
+        instance.provytaLayer = L.geoJSON(data, {
+            pointToLayer: (feature, latlng) =>
+                L.circleMarker(latlng, {
+                    radius: 6,
+                    color: "#1d4ed8",
+                    weight: 2,
+                    fillColor: "#3b82f6",
+                    fillOpacity: 0.85
+                }),
+            onEachFeature: (feature, layer) => {
+                const props = feature.properties ?? {};
+                const antal = props.antalPlantor ?? 0;
+                layer.bindTooltip(`Provyta: ${antal} plantor`, { permanent: false });
+            }
+        }).addTo(instance.map);
+    }
+}
+
+// Laddar ner traktens provytor (GeoJSON) som en fil (admin-funktion).
+export async function downloadProvytorGeoJson(traktId) {
+    const response = await fetch(`api/trakt/${traktId}/provytor/geojson`);
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+    const text = await response.text();
+    const blob = new Blob([text], { type: "application/geo+json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `trakt-${traktId}-provytor.geojson`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+// Panorerar/zoomar till en ruta och öppnar dess rapporteringspanel. Anropas när// användaren klickar på en avvikelse i sammanfattningspanelen.
 export function focusFeature(featureId) {
     for (const instance of instances.values()) {
         const layer = instance.layersById.get(Number(featureId));

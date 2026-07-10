@@ -84,6 +84,9 @@ namespace PlantApp.Migrations
                     b.Property<int>("DelOmradeId")
                         .HasColumnType("int");
 
+                    b.Property<Point>("Plats")
+                        .HasColumnType("geometry");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DelOmradeId");

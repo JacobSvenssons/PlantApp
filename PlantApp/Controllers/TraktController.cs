@@ -169,7 +169,52 @@ public class TraktController : ControllerBase
     }
 
     /// <summary>
-    /// Returnerar aggregerad statistik för en trakt (för startsidans dashboard):
+    /// Returnerar traktens provytor som GeoJSON-punkter (WGS84) för webbkartan och för
+    /// admins nedladdning av kartan med markerade provytor. Endast provytor som har en
+    /// registrerad plats tas med.
+    /// </summary>
+    [HttpGet("{id:int}/provytor/geojson")]
+    public async Task<IActionResult> GetProvytorGeoJson(int id, CancellationToken cancellationToken)
+    {
+        var trakt = await _db.Trakter
+            .AsNoTracking()
+            .Include(t => t.DelOmraden)
+                .ThenInclude(d => d.Provytor)
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
+        if (trakt is null)
+        {
+            return NotFound();
+        }
+
+        var features = new FeatureCollection();
+        foreach (var delOmrade in trakt.DelOmraden)
+        {
+            foreach (var provyta in delOmrade.Provytor)
+            {
+                if (provyta.Plats is null)
+                {
+                    continue;
+                }
+
+                // Lagrat i SWEREF99 TM (3006) -> reprojicera till WGS84 (4326) för kartan.
+                var wgs84 = _transformer.ToWgs84(provyta.Plats);
+
+                var attributes = new AttributesTable
+                {
+                    { "id", provyta.Id },
+                    { "delOmradeId", provyta.DelOmradeId },
+                    { "traktId", trakt.Id },
+                    { "antalPlantor", provyta.AntalPlantor }
+                };
+
+                features.Add(new Feature(wgs84, attributes));
+            }
+        }
+
+        var geoJson = new GeoJsonWriter().Write(features);
+        return Content(geoJson, "application/json");
+    }
     /// total areal, klar areal, procent klar och totalt antal satta plantor.
     /// </summary>
     [HttpGet("{id:int}/statistik")]
@@ -297,7 +342,7 @@ public class TraktController : ControllerBase
     /// Mappar ett delområde (med trakt och provytor inlästa) till detalj-DTO:n som
     /// kartvyns rapporteringspanel använder. Delas av GET- och PUT-endpointen.
     /// </summary>
-    private static DelOmradeDetailDto MapToDetail(PlantApp.Models.DelOmrade delOmrade) =>
+    private DelOmradeDetailDto MapToDetail(PlantApp.Models.DelOmrade delOmrade) =>
         new()
         {
             Id = delOmrade.Id,
@@ -313,7 +358,17 @@ public class TraktController : ControllerBase
             TilldeladAnvandare = delOmrade.TilldeladAnvandare,
             Provytor = delOmrade.Provytor
                 .OrderBy(p => p.Id)
-                .Select(p => new ProvytaDto { Id = p.Id, AntalPlantor = p.AntalPlantor })
+                .Select(p =>
+                {
+                    var wgs84 = p.Plats is not null ? _transformer.ToWgs84(p.Plats) : null;
+                    return new ProvytaDto
+                    {
+                        Id = p.Id,
+                        AntalPlantor = p.AntalPlantor,
+                        Latitud = wgs84?.Y,
+                        Longitud = wgs84?.X
+                    };
+                })
                 .ToList()
         };
 
@@ -353,8 +408,16 @@ public class TraktController : ControllerBase
         // Provytor skickas som en fullständig lista från klienten – ersätt de befintliga
         // raderna i stället för att försöka diffa fram vilka som lagts till/tagits bort.
         _db.RemoveRange(delOmrade.Provytor);
-        delOmrade.Provytor = dto.ProvytaAntal
-            .Select(antal => new PlantApp.Models.Provyta { DelOmradeId = delOmrade.Id, AntalPlantor = antal })
+        delOmrade.Provytor = dto.Provytor
+            .Select(p => new PlantApp.Models.Provyta
+            {
+                DelOmradeId = delOmrade.Id,
+                AntalPlantor = p.AntalPlantor,
+                // Kartklicket kommer i WGS84 (long/lat) – lagra som punkt i SWEREF99 TM.
+                Plats = p.Latitud is { } lat && p.Longitud is { } lon
+                    ? _transformer.ToSweref99Tm(lon, lat)
+                    : null
+            })
             .ToList();
 
         await _db.SaveChangesAsync(cancellationToken);

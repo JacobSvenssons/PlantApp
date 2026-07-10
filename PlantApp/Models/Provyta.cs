@@ -1,3 +1,5 @@
+using NetTopologySuite.Geometries;
+
 namespace PlantApp.Models;
 
 /// <summary>
@@ -12,6 +14,14 @@ public class Provyta
 	public int DelOmradeId { get; set; }
 
 	public int AntalPlantor { get; set; }
+
+	/// <summary>
+	/// Valfri geografisk plats där provytan togs, lagrad som en punkt i SWEREF99 TM
+	/// (SRID 3006, kolumntyp 'geometry'). Null om ingen markering gjorts på kartan.
+	/// Reprojiceras till WGS84 för visning i Leaflet. Ett första steg mot inventering,
+	/// där markering av provytans plats kommer att vara ett krav.
+	/// </summary>
+	public Point? Plats { get; set; }
 
 	public DelOmrade DelOmrade { get; set; } = null!;
 }

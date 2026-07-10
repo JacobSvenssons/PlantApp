@@ -13,4 +13,17 @@ public interface ICoordinateTransformer
     /// Resultatet har X = longitud, Y = latitud och SRID 4326.
     /// </summary>
     Polygon ToWgs84(Polygon source);
+
+    /// <summary>
+    /// Reprojicerar en punkt från SWEREF99 TM (3006) till WGS84 (4326).
+    /// Resultatet har X = longitud, Y = latitud och SRID 4326.
+    /// </summary>
+    Point ToWgs84(Point source);
+
+    /// <summary>
+    /// Reprojicerar en WGS84-koordinat (t.ex. ett kartklick i Leaflet) till en
+    /// punkt i SWEREF99 TM (3006) för lagring. Resultatet har X = Easting,
+    /// Y = Northing och SRID 3006.
+    /// </summary>
+    Point ToSweref99Tm(double longitude, double latitude);
 }

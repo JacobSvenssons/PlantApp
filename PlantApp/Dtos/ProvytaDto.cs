@@ -8,4 +8,10 @@ public class ProvytaDto
 	public int Id { get; set; }
 
 	public int AntalPlantor { get; set; }
+
+	/// <summary>Latitud (WGS84) för provytans plats. Null om ingen markering gjorts.</summary>
+	public double? Latitud { get; set; }
+
+	/// <summary>Longitud (WGS84) för provytans plats. Null om ingen markering gjorts.</summary>
+	public double? Longitud { get; set; }
 }

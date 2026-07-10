@@ -25,6 +25,25 @@ public class DelOmradeUpdateDto
     /// <summary>Användarnamn för den demo-användare delområdet tilldelas. Null = ingen tilldelning.</summary>
     public string? TilldeladAnvandare { get; set; }
 
-    /// <summary>Antal plantor per provyta. Listans längd = antal provytor.</summary>
-    public List<int> ProvytaAntal { get; set; } = [];
+    /// <summary>
+    /// Provytor för delområdet. Listans längd = antal provytor. Skickas som en
+    /// fullständig lista och ersätter alltid de befintliga raderna för delområdet.
+    /// Varje provyta har sitt antal plantor och en valfri kartmarkering (lat/long).
+    /// </summary>
+    public List<ProvytaInputDto> Provytor { get; set; } = [];
+}
+
+/// <summary>
+/// En provyta så som den skickas in från kartvyn: antal plantor och en valfri
+/// geografisk markering (WGS84) för var provytan togs.
+/// </summary>
+public class ProvytaInputDto
+{
+    public int AntalPlantor { get; set; }
+
+    /// <summary>Latitud (WGS84) för provytans plats. Null om ingen markering gjorts.</summary>
+    public double? Latitud { get; set; }
+
+    /// <summary>Longitud (WGS84) för provytans plats. Null om ingen markering gjorts.</summary>
+    public double? Longitud { get; set; }
 }

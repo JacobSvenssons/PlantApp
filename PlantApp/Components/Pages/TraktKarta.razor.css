@@ -97,6 +97,54 @@
     }
 }
 
+/* Döljer rapportpanelen medan användaren markerar en provytas plats i kartan,
+   så att panelen inte blockerar kartklick. State behålls i Blazor. */
+.rapport-panel--dold {
+    transform: translate(-50%, 100%);
+    opacity: 0;
+    pointer-events: none;
+    animation: none;
+}
+
+/* Flytande banner högst upp som visar att markeringsläge är aktivt. */
+.markering-banner {
+    position: absolute;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 960;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: calc(100% - 2rem);
+    padding: 0.55rem 0.9rem;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.95);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    font-size: 0.9rem;
+}
+
+.markering-banner__text {
+    font-weight: 500;
+}
+
+.markering-banner__avbryt {
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    background: transparent;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.markering-banner__avbryt:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
 .rapport-panel__header {
     display: flex;
     align-items: flex-start;
@@ -228,6 +276,79 @@
 
 .provyta-rad__ta-bort:hover {
     background: rgba(185, 28, 28, 0.08);
+}
+
+.provyta-rad__markera {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.4rem 0.55rem;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+.provyta-rad__markera:hover {
+    background: #f1f5f9;
+}
+
+.provyta-rad__markera--satt {
+    border-color: #166016;
+    color: #166016;
+    background: rgba(34, 139, 34, 0.08);
+}
+
+.provyta-rad__markera--aktiv {
+    border-color: #2563eb;
+    color: #2563eb;
+    background: rgba(37, 99, 235, 0.1);
+}
+
+.provyta-rad__rensa-plats {
+    border: none;
+    background: transparent;
+    font-size: 0.75rem;
+    color: #b91c1c;
+    cursor: pointer;
+    padding: 0 0.35rem;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+.provyta-rad__rensa-plats:hover {
+    background: rgba(185, 28, 28, 0.08);
+}
+
+/* Admin: nedladdning av provytor som GeoJSON */
+.trakt-provyta-export {
+    position: absolute;
+    left: 0.75rem;
+    bottom: 1.5rem;
+    z-index: 600;
+}
+
+.trakt-provyta-export__knapp {
+    border: 1px solid #cbd5e1;
+    background: rgba(255, 255, 255, 0.95);
+    color: #334155;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.trakt-provyta-export__knapp:hover {
+    background: #ffffff;
+}
+
+/* Provyta-markörer på kartan */
+.provyta-markor {
+    background: transparent;
+    border: none;
 }
 
 /* Statusväljare som checklista (kryssrutor) */

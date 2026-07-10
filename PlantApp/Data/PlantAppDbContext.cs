@@ -107,6 +107,11 @@ public class PlantAppDbContext : DbContext
 
             entity.Property(p => p.AntalPlantor)
                   .IsRequired();
+
+            // Valfri provyta-plats lagras nativt som en punkt i SWEREF99 TM (SRID 3006).
+            // Precis som DelOmrade.Geometri används kolumntypen 'geometry' (projicerat CRS).
+            entity.Property(p => p.Plats)
+                  .HasColumnType("geometry");
         });
     }
 }

@@ -126,6 +126,7 @@
                                 <th class="tabell__num">Mål</th>
                                 <th class="tabell__num">Måluppfyllelse</th>
                                 <th class="tabell__num">Provytor</th>
+                                <th class="tabell__num">Karta</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -144,6 +145,21 @@
                                     <td class="tabell__num">@trakt.MalTotaltAntalPlantor.ToString("N0", CultureInfo.CurrentCulture)</td>
                                     <td class="tabell__num">@maluppfyllelse</td>
                                     <td class="tabell__num">@trakt.AntalProvytor</td>
+                                    <td class="tabell__num">
+                                        @if (trakt.AntalProvytor > 0)
+                                        {
+                                            <a class="knapp-lank"
+                                               href="@($"api/trakt/{trakt.TraktId}/provytor/geojson")"
+                                               download="@($"trakt-{trakt.TraktId}-provytor.geojson")"
+                                               title="Ladda ner provytor med kartmarkeringar som GeoJSON">
+                                                ⬇ Provytor
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="insikter-tabell__tom">–</span>
+                                        }
+                                    </td>
                                 </tr>
                             }
                         </tbody>
