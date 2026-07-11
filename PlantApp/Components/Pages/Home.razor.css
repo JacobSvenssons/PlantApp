@@ -33,6 +33,42 @@
     font-size: 0.95rem;
 }
 
+.start-vaxel {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    background: #f1f5f9;
+    border-radius: 999px;
+    margin-bottom: 1.5rem;
+}
+
+.start-vaxel__knapp {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: #475569;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.5rem 0.75rem;
+    border-radius: 999px;
+    transition: background 0.15s, color 0.15s;
+}
+
+.start-vaxel__knapp:hover {
+    color: #1f2933;
+}
+
+.start-vaxel__knapp--aktiv {
+    background: #166534;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(22, 101, 52, 0.25);
+}
+
+.start-vaxel__knapp--aktiv:hover {
+    color: #fff;
+}
+
 .start-falt {
     display: flex;
     flex-direction: column;

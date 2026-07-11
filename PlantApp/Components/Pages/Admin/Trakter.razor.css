@@ -10,6 +10,36 @@
     width: min(860px, 100%);
 }
 
+.inventering-start {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.inventering-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.inventering-toggle input {
+    width: 1.05rem;
+    height: 1.05rem;
+    cursor: pointer;
+}
+
+.inventering-start__select {
+    padding: 0.3rem 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    background: #fff;
+    max-width: 12rem;
+}
+
 .trakter-card__header {
     display: flex;
     align-items: flex-start;

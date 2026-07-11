@@ -29,5 +29,11 @@ public class Trakt
     /// </summary>
     public int? MalPlantorPerHektar { get; set; }
 
+    /// <summary>
+    /// Anger om trakten är öppnad för inventering. När den är true kan en inventerare
+    /// starta/öppna en inventeringsomgång för trakten från startsidan. Standard är false.
+    /// </summary>
+    public bool InventeringMojlig { get; set; }
+
     public ICollection<DelOmrade> DelOmraden { get; set; } = new List<DelOmrade>();
 }

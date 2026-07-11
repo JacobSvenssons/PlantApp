@@ -12,6 +12,7 @@ public sealed class DemoUserStore
     public const string RoleAdmin = "Admin";
     public const string RolePlantbas = "Plantbas";
     public const string RolePlantsattare = "Plantsattare";
+    public const string RoleInventerare = "Inventerare";
 
     public sealed record DemoUser(string UserName, string Password, string DisplayName, string Role);
 
@@ -20,6 +21,7 @@ public sealed class DemoUserStore
         new("admin", "admin123", "Admin Adminsson", RoleAdmin),
         new("plantbas", "plantbas123", "Bosse Plantbas", RolePlantbas),
         new("plantsattare", "plantor123", "Petra Plantsättare", RolePlantsattare),
+        new("inventerare", "invent123", "Ina Inventerare", RoleInventerare),
     ];
 
     /// <summary>
@@ -51,6 +53,15 @@ public sealed class DemoUserStore
     public IReadOnlyList<DemoUser> GetAppointableUsers() =>
         _users
             .Where(u => u.Role is RolePlantbas or RolePlantsattare)
+            .ToList();
+
+    /// <summary>
+    /// Användare som kan tilldelas en inventeringsomgång, dvs. inventerare (admin
+    /// utför tilldelningen men inventerar inte själv).
+    /// </summary>
+    public IReadOnlyList<DemoUser> GetInventerare() =>
+        _users
+            .Where(u => u.Role is RoleInventerare)
             .ToList();
 
     /// <summary>

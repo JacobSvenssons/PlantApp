@@ -10,6 +10,32 @@
     width: min(860px, 100%);
 }
 
+.insikter-vaxel {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    margin-bottom: 1.25rem;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 999px;
+}
+
+.insikter-vaxel__knapp {
+    border: none;
+    background: transparent;
+    padding: 0.5rem 1.1rem;
+    border-radius: 999px;
+    font-weight: 600;
+    color: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.insikter-vaxel__knapp--aktiv {
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    color: #1a7a3c;
+}
+
 .insikter-card__header {
     display: flex;
     align-items: flex-start;

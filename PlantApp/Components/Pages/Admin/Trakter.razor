@@ -2,9 +2,11 @@
 @rendermode InteractiveServer
 @using System.Net.Http.Json
 @using System.Globalization
+@using PlantApp.Services
 @attribute [Authorize(Roles = "Admin")]
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
+@inject PlantApp.Services.DemoUserStore DemoUserStore
 
 <PageTitle>PlantApp – Hantera trakter</PageTitle>
 
@@ -52,6 +54,7 @@
                         <th class="tabell__num">Plantor</th>
                         <th>Status</th>
                         <th>Skapad</th>
+                        <th>Inventering möjlig</th>
                         <th class="tabell__actions">Åtgärd</th>
                     </tr>
                 </thead>
@@ -65,6 +68,14 @@
                             <td class="tabell__num">@trakt.TotaltAntalPlantor</td>
                             <td>@trakt.Status</td>
                             <td>@trakt.SkapadDatum.ToLocalTime().ToString("yyyy-MM-dd", CultureInfo.CurrentCulture)</td>
+                            <td>
+                                <label class="inventering-toggle">
+                                    <input type="checkbox" checked="@trakt.InventeringMojlig"
+                                           @onchange="e => SetInventeringMojligAsync(trakt.Id, e)"
+                                           disabled="@(_uppdaterarInventering == trakt.Id)" />
+                                    <span>@(trakt.InventeringMojlig ? "Öppen" : "Stängd")</span>
+                                </label>
+                            </td>
                             <td class="tabell__actions">
                                 @if (_bekraftaId == trakt.Id)
                                 {
@@ -112,9 +123,53 @@
     private int? _bekraftaId;
     private bool _raderar;
 
+    private int? _uppdaterarInventering;
+
     protected override async Task OnInitializedAsync()
     {
         await LaddaTrakterAsync();
+    }
+
+    private async Task SetInventeringMojligAsync(int traktId, ChangeEventArgs e)
+    {
+        var mojlig = e.Value is bool b && b;
+        _uppdaterarInventering = traktId;
+        _message = null;
+        _loadError = null;
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var response = await client.PutAsJsonAsync(
+                $"{NavigationManager.BaseUri}api/trakt/{traktId}/inventering-mojlig",
+                new { Mojlig = mojlig });
+
+            var trakt = _trakter?.FirstOrDefault(t => t.Id == traktId);
+            if (response.IsSuccessStatusCode)
+            {
+                if (trakt is not null)
+                {
+                    trakt.InventeringMojlig = mojlig;
+                }
+
+                var namn = trakt?.Namn;
+                _message = mojlig
+                    ? $"\"{namn}\" är nu öppen för inventering."
+                    : $"\"{namn}\" är inte längre öppen för inventering.";
+            }
+            else
+            {
+                _loadError = $"Kunde inte uppdatera inventeringsstatus (HTTP {(int)response.StatusCode}).";
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Fel vid uppdatering av inventeringsstatus: {ex.Message}";
+        }
+        finally
+        {
+            _uppdaterarInventering = null;
+        }
     }
 
     private async Task LaddaTrakterAsync()
@@ -185,5 +240,6 @@
         public int AntalDelomraden { get; set; }
         public int AntalProvytor { get; set; }
         public int TotaltAntalPlantor { get; set; }
+        public bool InventeringMojlig { get; set; }
     }
 }

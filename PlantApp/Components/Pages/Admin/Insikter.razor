@@ -38,6 +38,25 @@
         }
         else
         {
+            <div class="insikter-vaxel" role="tablist">
+                <button type="button"
+                        class="insikter-vaxel__knapp @(_vy == InsiktVy.Plantering ? "insikter-vaxel__knapp--aktiv" : "")"
+                        role="tab"
+                        aria-selected="@(_vy == InsiktVy.Plantering)"
+                        @onclick="() => _vy = InsiktVy.Plantering">
+                    🌱 Insikter – Plantering
+                </button>
+                <button type="button"
+                        class="insikter-vaxel__knapp @(_vy == InsiktVy.Inventering ? "insikter-vaxel__knapp--aktiv" : "")"
+                        role="tab"
+                        aria-selected="@(_vy == InsiktVy.Inventering)"
+                        @onclick="() => _vy = InsiktVy.Inventering">
+                    🔬 Insikter – Inventering
+                </button>
+            </div>
+
+            @if (_vy == InsiktVy.Plantering)
+            {
             <div class="insikter-val">
                 <div class="insikter-val__topp">
                     <span class="insikter-val__rubrik">Trakter (@_valda.Count / @_statistik.Count)</span>
@@ -202,14 +221,73 @@
                     </ul>
                 }
             </div>
+            }
+            else
+            {
+            <div class="insikter-inventeringar">
+                <div class="insikter-tabell__rubrik">Inventeringar</div>
+                @if (_inskickadeInventeringar.Count == 0)
+                {
+                    <div class="insikter-melding">Inga inventeringar har registrerats ännu.</div>
+                }
+                else
+                {
+                    <table class="tabell">
+                        <thead>
+                            <tr>
+                                <th>Trakt</th>
+                                <th>Inventerare</th>
+                                <th class="tabell__num">Provytor</th>
+                                <th class="tabell__num">Plantor</th>
+                                <th class="tabell__num">Uppdaterad</th>
+                                <th class="tabell__num">Karta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var inv in _inskickadeInventeringar)
+                            {
+                                <tr>
+                                    <td>@(inv.TraktNamn ?? $"Trakt {inv.TraktId}")</td>
+                                    <td>@(string.IsNullOrWhiteSpace(inv.TilldeladAnvandare) ? "–" : inv.TilldeladAnvandare)</td>
+                                    <td class="tabell__num">@inv.AntalProvytor</td>
+                                    <td class="tabell__num">@inv.TotaltAntalPlantor.ToString("N0", CultureInfo.CurrentCulture)</td>
+                                    <td class="tabell__num">@inv.SkapadDatum.ToLocalTime().ToString("yyyy-MM-dd")</td>
+                                    <td class="tabell__num">
+                                        @if (inv.AntalProvytor > 0)
+                                        {
+                                            <a class="knapp-lank"
+                                               href="@($"api/inventering/{inv.Id}/provytor/geojson")"
+                                               download="@($"inventering-{inv.Id}-provytor.geojson")"
+                                               title="Ladda ner inventeringens provytor som GeoJSON">
+                                                ⬇ Provytor
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="insikter-tabell__tom">–</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+            }
         }
     </div>
 </div>
 
 @code {
+    private enum InsiktVy { Plantering, Inventering }
+
+    private InsiktVy _vy = InsiktVy.Plantering;
+
     private List<TraktStatistik>? _statistik;
     private readonly HashSet<int> _valda = new();
     private string? _loadError;
+
+    private List<InventeringItem> _inskickadeInventeringar = new();
 
     private Summering _summering = new();
 
@@ -230,6 +308,10 @@
                 }
                 RaknaOmSummering();
             }
+
+            // Hämta inventeringsomgångar för uppföljningen.
+            _inskickadeInventeringar = await client.GetFromJsonAsync<List<InventeringItem>>(
+                $"{NavigationManager.BaseUri}api/inventering") ?? new();
         }
         catch (Exception ex)
         {
@@ -325,6 +407,18 @@
         public int DelOmradeId { get; set; }
         public string Kommentar { get; set; } = "";
         public string Status { get; set; } = "";
+    }
+
+    private sealed class InventeringItem
+    {
+        public int Id { get; set; }
+        public int TraktId { get; set; }
+        public string? TraktNamn { get; set; }
+        public DateTime SkapadDatum { get; set; }
+        public string? TilldeladAnvandare { get; set; }
+        public PlantApp.Models.InventeringStatus Status { get; set; }
+        public int AntalProvytor { get; set; }
+        public int TotaltAntalPlantor { get; set; }
     }
 
     private sealed class Summering

@@ -1,0 +1,523 @@
+.inventering-page {
+    position: relative;
+    height: calc(100vh - 3.5rem);
+    width: 100%;
+    overflow: hidden;
+}
+
+.inventering-karta {
+    height: 100%;
+    width: 100%;
+    background: #1a1a1a;
+}
+
+.karta-status {
+    position: absolute;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+.karta-status--fel {
+    background: rgba(150, 30, 30, 0.9);
+}
+
+.karta-toast {
+    position: absolute;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 900;
+    padding: 0.5rem 1.1rem;
+    border-radius: 999px;
+    background: rgba(31, 77, 46, 0.92);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+    animation: toast-in 0.2s ease-out;
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+/* Diskret auto-spara-indikator uppe till höger. */
+.spar-status {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 900;
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-size: 0.8rem;
+    pointer-events: none;
+}
+
+/* Banner högst upp som visar att markeringsläge är aktivt. */
+.markering-banner {
+    position: absolute;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 960;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: calc(100% - 2rem);
+    padding: 0.55rem 0.9rem;
+    border-radius: 999px;
+    background: rgba(22, 101, 52, 0.95);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    font-size: 0.9rem;
+}
+
+.markering-banner__text {
+    font-weight: 500;
+}
+
+.markering-banner__avbryt {
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    background: transparent;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.markering-banner__avbryt:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* ---------------------------------------------------------------------------
+   Provyta-lista (vänster på desktop, kollapsbar overlay på mobil)
+--------------------------------------------------------------------------- */
+.provyta-lista {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    bottom: 6rem;
+    z-index: 800;
+    width: 300px;
+    max-width: calc(100% - 2rem);
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 8px 30px rgba(22, 58, 34, 0.18);
+    overflow: hidden;
+}
+
+/* Fliken används bara för att kollapsa på mobil – dold på desktop. */
+.provyta-lista__flik {
+    display: none;
+}
+
+.provyta-lista__kropp {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+}
+
+.provyta-lista__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.9rem 1rem 0.6rem;
+    border-bottom: 1px solid #eef2f0;
+}
+
+.provyta-lista__titel {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1f2933;
+}
+
+.provyta-lista__subtitel {
+    font-size: 0.78rem;
+    color: #6b7280;
+}
+
+.provyta-lista__till-karta {
+    border: 1px solid #d1fae5;
+    background: #ecfdf5;
+    color: #166534;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0.3rem 0.5rem;
+    border-radius: 10px;
+    line-height: 1;
+}
+
+.provyta-lista__till-karta:hover {
+    background: #d1fae5;
+}
+
+.provyta-lista__tom {
+    padding: 1rem;
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.provyta-lista__lista {
+    list-style: none;
+    margin: 0;
+    padding: 0.5rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.provyta-listrad {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    text-align: left;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fff;
+    padding: 0.55rem 0.7rem;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.provyta-listrad:hover {
+    border-color: #86efac;
+}
+
+.provyta-listrad--aktiv {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
+}
+
+.provyta-listrad__nr {
+    font-weight: 700;
+    color: #166534;
+    flex-shrink: 0;
+}
+
+.provyta-listrad__info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.provyta-listrad__antal {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1f2933;
+}
+
+.provyta-listrad__sort {
+    font-size: 0.78rem;
+    color: #6b7280;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.provyta-listrad__plats {
+    flex-shrink: 0;
+    font-size: 0.9rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Kompakt formkort (visas bara vid redigering)
+--------------------------------------------------------------------------- */
+.provyta-form {
+    position: absolute;
+    right: 1rem;
+    bottom: 6rem;
+    z-index: 950;
+    width: min(340px, calc(100% - 2rem));
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 8px 30px rgba(22, 58, 34, 0.22);
+    padding: 0.9rem 1rem 1rem;
+    animation: kort-in 0.18s ease-out;
+}
+
+@keyframes kort-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.provyta-form__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.provyta-form__titel {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #166534;
+}
+
+.provyta-form__stang {
+    border: none;
+    background: transparent;
+    font-size: 1.4rem;
+    line-height: 1;
+    color: #9ca3af;
+    cursor: pointer;
+}
+
+.provyta-form__stang:hover {
+    color: #4b5563;
+}
+
+.provyta-form__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
+}
+
+.provyta-form__plats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.6rem 0;
+    border-top: 1px solid #f1f5f9;
+    margin-top: 0.4rem;
+}
+
+.provyta-form__plats-status {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.provyta-form__plats-knappar {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.provyta-form__actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+}
+
+.falt {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-bottom: 0.6rem;
+}
+
+.falt--kompakt {
+    margin-bottom: 0;
+}
+
+.falt label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #4b5563;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.falt__input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    background: #fff;
+    color: #1f2933;
+}
+
+.falt__textarea {
+    resize: vertical;
+    font-family: inherit;
+}
+
+.knapp {
+    border: none;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.55rem 1.1rem;
+}
+
+.knapp--liten {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.82rem;
+}
+
+.knapp--primar {
+    background: #166534;
+    color: #fff;
+}
+
+.knapp--primar:hover {
+    background: #14532d;
+}
+
+.knapp--sekundar {
+    background: #eef2f7;
+    color: #334155;
+}
+
+.knapp--sekundar:hover {
+    background: #e2e8f0;
+}
+
+.knapp--fara {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.knapp--fara:hover {
+    background: #fee2e2;
+}
+
+/* ---------------------------------------------------------------------------
+   Botten-åtgärdsrad
+--------------------------------------------------------------------------- */
+.inventering-actions {
+    position: absolute;
+    left: 50%;
+    bottom: 1.25rem;
+    transform: translateX(-50%);
+    z-index: 900;
+    display: flex;
+    gap: 0.6rem;
+    padding: 0.4rem;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 999px;
+    box-shadow: 0 6px 24px rgba(22, 58, 34, 0.2);
+    backdrop-filter: blur(4px);
+    max-width: calc(100% - 2rem);
+}
+
+.inventering-actions__knapp {
+    border: none;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.65rem 1.1rem;
+    background: #eef2f7;
+    color: #334155;
+    white-space: nowrap;
+}
+
+.inventering-actions__knapp:hover {
+    background: #e2e8f0;
+}
+
+.inventering-actions__knapp--primar {
+    background: #166534;
+    color: #fff;
+}
+
+.inventering-actions__knapp--primar:hover {
+    background: #14532d;
+}
+
+.inventering-actions__knapp:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+/* ---------------------------------------------------------------------------
+   Mobilanpassning: listan kollapsar till en flik, formkortet blir bredare
+--------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+    .provyta-lista {
+        top: 1rem;
+        left: 1rem;
+        bottom: auto;
+        width: auto;
+    }
+
+    .provyta-lista__flik {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        border: none;
+        background: #fff;
+        border-radius: 999px;
+        box-shadow: 0 4px 16px rgba(22, 58, 34, 0.18);
+        padding: 0.5rem 0.8rem;
+        cursor: pointer;
+        font-weight: 700;
+        color: #166534;
+    }
+
+    .provyta-lista__kropp {
+        display: none;
+        position: absolute;
+        top: 3.2rem;
+        left: 0;
+        width: 80vw;
+        max-width: 320px;
+        max-height: 60vh;
+        background: #fff;
+        border-radius: 18px;
+        box-shadow: 0 8px 30px rgba(22, 58, 34, 0.22);
+    }
+
+    .provyta-lista--oppen .provyta-lista__kropp {
+        display: flex;
+    }
+
+    .provyta-form {
+        right: 1rem;
+        left: 1rem;
+        width: auto;
+        bottom: 5.5rem;
+    }
+
+    .inventering-actions {
+        width: calc(100% - 2rem);
+        justify-content: center;
+    }
+
+    .inventering-actions__knapp {
+        flex: 1;
+        text-align: center;
+    }
+}

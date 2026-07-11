@@ -70,6 +70,71 @@ namespace PlantApp.Migrations
                     b.ToTable("DelOmraden", (string)null);
                 });
 
+            modelBuilder.Entity("PlantApp.Models.Inventering", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("SkapadDatum")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TilldeladAnvandare")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("TraktId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TraktId");
+
+                    b.ToTable("Inventeringar", (string)null);
+                });
+
+            modelBuilder.Entity("PlantApp.Models.InventeringsProvyta", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AntalPlantor")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("DelOmradeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("InventeringId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Kommentar")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Point>("Plats")
+                        .HasColumnType("geometry");
+
+                    b.Property<string>("Tradsort")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InventeringId");
+
+                    b.ToTable("InventeringsProvytor", (string)null);
+                });
+
             modelBuilder.Entity("PlantApp.Models.Provyta", b =>
                 {
                     b.Property<int>("Id")
@@ -101,6 +166,11 @@ namespace PlantApp.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("InventeringMojlig")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<int?>("MalPlantorPerHektar")
                         .HasColumnType("int");
@@ -138,6 +208,28 @@ namespace PlantApp.Migrations
                     b.Navigation("Trakt");
                 });
 
+            modelBuilder.Entity("PlantApp.Models.Inventering", b =>
+                {
+                    b.HasOne("PlantApp.Models.Trakt", "Trakt")
+                        .WithMany()
+                        .HasForeignKey("TraktId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Trakt");
+                });
+
+            modelBuilder.Entity("PlantApp.Models.InventeringsProvyta", b =>
+                {
+                    b.HasOne("PlantApp.Models.Inventering", "Inventering")
+                        .WithMany("Provytor")
+                        .HasForeignKey("InventeringId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Inventering");
+                });
+
             modelBuilder.Entity("PlantApp.Models.Provyta", b =>
                 {
                     b.HasOne("PlantApp.Models.DelOmrade", "DelOmrade")
@@ -150,6 +242,11 @@ namespace PlantApp.Migrations
                 });
 
             modelBuilder.Entity("PlantApp.Models.DelOmrade", b =>
+                {
+                    b.Navigation("Provytor");
+                });
+
+            modelBuilder.Entity("PlantApp.Models.Inventering", b =>
                 {
                     b.Navigation("Provytor");
                 });

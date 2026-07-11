@@ -1,10 +1,10 @@
 ﻿@page "/"
 @rendermode InteractiveServer
 @using System.Net.Http.Json
+@using PlantApp.Models
 @using PlantApp.Services
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
-
 <PageTitle>PlantApp – Välj trakt</PageTitle>
 
 <div class="start-page">
@@ -13,13 +13,63 @@
             <span class="start-card__logo" aria-hidden="true">🌲</span>
             <div>
                 <h1 class="start-card__titel">PlantApp</h1>
-                <p class="start-card__subtitel">Välj en trakt för att öppna planteringskartan.</p>
+                <p class="start-card__subtitel">
+                    @(_vy == Vy.Inventering
+                        ? "Välj en omgång för att öppna inventeringen."
+                        : "Välj en trakt för att öppna planteringskartan.")
+                </p>
             </div>
         </div>
+
+        @if (_kanInventera)
+        {
+            <div class="start-vaxel" role="tablist" aria-label="Välj vy">
+                <button type="button" role="tab" aria-selected="@(_vy == Vy.Plantering)"
+                        class="start-vaxel__knapp @(_vy == Vy.Plantering ? "start-vaxel__knapp--aktiv" : null)"
+                        @onclick="() => BytVy(Vy.Plantering)">
+                    🌱 Plantering
+                </button>
+                <button type="button" role="tab" aria-selected="@(_vy == Vy.Inventering)"
+                        class="start-vaxel__knapp @(_vy == Vy.Inventering ? "start-vaxel__knapp--aktiv" : null)"
+                        @onclick="() => BytVy(Vy.Inventering)">
+                    📋 Inventering
+                </button>
+            </div>
+        }
 
         @if (_loadError is not null)
         {
             <div class="start-melding start-melding--fel">@_loadError</div>
+        }
+        else if (_vy == Vy.Inventering)
+        {
+            @if (_inventeringsTrakter is null)
+            {
+                <div class="start-melding">Laddar trakter…</div>
+            }
+            else if (_inventeringsTrakter.Count == 0)
+            {
+                <div class="start-melding">Inga trakter är öppnade för inventering ännu.</div>
+            }
+            else
+            {
+                <div class="start-falt">
+                    <label for="inventering-val">Trakt</label>
+                    <select id="inventering-val" class="start-select" @bind="_selectedInventeringTraktId">
+                        <option value="0" disabled>– Välj trakt –</option>
+                        @foreach (var trakt in _inventeringsTrakter)
+                        {
+                            <option value="@trakt.Id">@trakt.Namn (@trakt.AntalDelomraden delområden)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="start-actions">
+                    <button class="btn-pill" disabled="@(_selectedInventeringTraktId <= 0 || _startarInventering)" @onclick="OpenInventering">
+                        @(_startarInventering ? "Öppnar…" : "Öppna inventering")
+                    </button>
+                </div>
+            }
         }
         else if (_trakter is null)
         {
@@ -118,6 +168,15 @@
 
     private bool _kanSeAvvikelser;
 
+    // Inventeringsläge – bara tillgängligt för inventerare/admin.
+    private enum Vy { Plantering, Inventering }
+    private Vy _vy = Vy.Plantering;
+    private bool _kanInventera;
+    private bool _isAdmin;
+    private List<TraktListItem>? _inventeringsTrakter;
+    private int _selectedInventeringTraktId;
+    private bool _startarInventering;
+
     [CascadingParameter]
     private Task<AuthenticationState>? AuthState { get; set; }
 
@@ -126,9 +185,11 @@
         if (AuthState is not null)
         {
             var user = (await AuthState).User;
+            _isAdmin = user.IsInRole(DemoUserStore.RoleAdmin);
             // Avvikelser är ett översiktsverktyg för admin/plantbas.
-            _kanSeAvvikelser = user.IsInRole(DemoUserStore.RoleAdmin)
-                || user.IsInRole(DemoUserStore.RolePlantbas);
+            _kanSeAvvikelser = _isAdmin || user.IsInRole(DemoUserStore.RolePlantbas);
+            // Inventeringsvyn visas för inventerare och admin.
+            _kanInventera = _isAdmin || user.IsInRole(DemoUserStore.RoleInventerare);
         }
 
         try
@@ -140,6 +201,75 @@
         catch (Exception ex)
         {
             _loadError = $"Kunde inte hämta trakter: {ex.Message}";
+        }
+    }
+
+    private async Task BytVy(Vy vy)
+    {
+        if (_vy == vy)
+        {
+            return;
+        }
+
+        _vy = vy;
+        _loadError = null;
+
+        // Ladda inventeringar första gången användaren växlar till inventeringsvyn.
+        if (vy == Vy.Inventering && _inventeringsTrakter is null)
+        {
+            LaddaInventeringsTrakter();
+        }
+    }
+
+    private void LaddaInventeringsTrakter()
+    {
+        // Visa bara trakter som admin har öppnat för inventering.
+        _inventeringsTrakter = _trakter?
+            .Where(t => t.InventeringMojlig)
+            .ToList() ?? new();
+    }
+
+    private async Task OpenInventering()
+    {
+        if (_selectedInventeringTraktId <= 0)
+        {
+            return;
+        }
+
+        _startarInventering = true;
+        _loadError = null;
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var response = await client.PostAsJsonAsync(
+                $"{NavigationManager.BaseUri}api/inventering/starta",
+                new { TraktId = _selectedInventeringTraktId });
+
+            if (response.IsSuccessStatusCode)
+            {
+                var inventering = await response.Content.ReadFromJsonAsync<InventeringListItem>();
+                if (inventering is not null)
+                {
+                    NavigationManager.NavigateTo($"/inventering/{inventering.Id}");
+                }
+                else
+                {
+                    _loadError = "Kunde inte öppna inventeringen.";
+                }
+            }
+            else
+            {
+                _loadError = $"Kunde inte öppna inventeringen (HTTP {(int)response.StatusCode}).";
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Fel vid start av inventering: {ex.Message}";
+        }
+        finally
+        {
+            _startarInventering = false;
         }
     }
 
@@ -184,6 +314,7 @@
         public string? Status { get; set; }
         public DateTime SkapadDatum { get; set; }
         public int AntalDelomraden { get; set; }
+        public bool InventeringMojlig { get; set; }
     }
 
     private sealed class TraktStatistik
@@ -204,5 +335,15 @@
         public int DelOmradeId { get; set; }
         public string Kommentar { get; set; } = "";
         public string Status { get; set; } = "";
+    }
+
+    private sealed class InventeringListItem
+    {
+        public int Id { get; set; }
+        public int TraktId { get; set; }
+        public string? TraktNamn { get; set; }
+        public string? TilldeladAnvandare { get; set; }
+        public InventeringStatus Status { get; set; }
+        public int AntalProvytor { get; set; }
     }
 }

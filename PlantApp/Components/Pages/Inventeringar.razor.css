@@ -1,0 +1,109 @@
+.inventeringar-page {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 3rem;
+}
+
+.inventeringar-topp {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.inventeringar-titel {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2933;
+}
+
+.inventeringar-subtitel {
+    margin: 0.25rem 0 0;
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.inventeringar-melding {
+    padding: 1rem 1.25rem;
+    border-radius: 14px;
+    background: #f3f4f6;
+    color: #4b5563;
+    font-size: 0.95rem;
+}
+
+.inventeringar-melding--fel {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.inventeringar-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.inventering-rad {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    text-align: left;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    background: #fff;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.inventering-rad:hover {
+    border-color: #86efac;
+    box-shadow: 0 4px 16px rgba(22, 101, 52, 0.12);
+}
+
+.inventering-rad__huvud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.inventering-rad__trakt {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #1f2933;
+}
+
+.inventering-rad__status {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+}
+
+.inventering-rad__status--paborjad {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.inventering-rad__status--klar {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.inventering-rad__status--inskickad {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.inventering-rad__detalj {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    color: #6b7280;
+    font-size: 0.85rem;
+}

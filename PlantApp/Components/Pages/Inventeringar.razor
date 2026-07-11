@@ -1,0 +1,105 @@
+@page "/inventeringar"
+@rendermode InteractiveServer
+@using System.Net.Http.Json
+@using PlantApp.Dtos
+@using PlantApp.Models
+@using PlantApp.Services
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@inject DemoUserStore DemoUserStore
+@attribute [Authorize(Roles = "Admin,Inventerare")]
+
+<PageTitle>Inventeringar</PageTitle>
+
+<div class="inventeringar-page">
+    <div class="inventeringar-topp">
+        <div>
+            <h1 class="inventeringar-titel">Inventeringar</h1>
+            <p class="inventeringar-subtitel">Uppföljning av tidigare planteringar.</p>
+        </div>
+        <a class="btn-pill btn-pill--ghost" href="/">Till start</a>
+    </div>
+
+    @if (_loadError is not null)
+    {
+        <div class="inventeringar-melding inventeringar-melding--fel">@_loadError</div>
+    }
+    else if (_inventeringar is null)
+    {
+        <div class="inventeringar-melding">Laddar inventeringar…</div>
+    }
+    else if (_inventeringar.Count == 0)
+    {
+        <div class="inventeringar-melding">Inga inventeringsomgångar är tilldelade dig ännu.</div>
+    }
+    else
+    {
+        <div class="inventeringar-lista">
+            @foreach (var inv in _inventeringar)
+            {
+                <button type="button" class="inventering-rad" @onclick="() => Oppna(inv.Id)">
+                    <div class="inventering-rad__huvud">
+                        <span class="inventering-rad__trakt">@(inv.TraktNamn ?? $"Trakt {inv.TraktId}")</span>
+                        <span class="inventering-rad__status inventering-rad__status--@inv.Status.ToString().ToLowerInvariant()">
+                            @StatusText(inv.Status)
+                        </span>
+                    </div>
+                    <div class="inventering-rad__detalj">
+                        <span>@inv.AntalProvytor provytor</span>
+                        <span>@inv.TotaltAntalPlantor plantor</span>
+                        <span>Skapad @inv.SkapadDatum.ToLocalTime().ToString("yyyy-MM-dd")</span>
+                    </div>
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private List<InventeringDto>? _inventeringar;
+    private string? _loadError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        string? currentUser = null;
+        var isAdmin = false;
+
+        if (AuthState is not null)
+        {
+            var user = (await AuthState).User;
+            currentUser = user.Identity?.Name;
+            isAdmin = user.IsInRole(DemoUserStore.RoleAdmin);
+        }
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var alla = await client.GetFromJsonAsync<List<InventeringDto>>(
+                $"{NavigationManager.BaseUri}api/inventering");
+
+            // Admin ser alla omgångar; en inventerare ser bara sina tilldelade.
+            _inventeringar = isAdmin || alla is null
+                ? alla ?? new()
+                : alla.Where(i => string.Equals(i.TilldeladAnvandare, currentUser, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Kunde inte hämta inventeringar: {ex.Message}";
+        }
+    }
+
+    private void Oppna(int id)
+    {
+        NavigationManager.NavigateTo($"/inventering/{id}");
+    }
+
+    private static string StatusText(InventeringStatus status) => status switch
+    {
+        InventeringStatus.Paborjad => "Påbörjad",
+        InventeringStatus.Klar => "Klar",
+        _ => status.ToString()
+    };
+}

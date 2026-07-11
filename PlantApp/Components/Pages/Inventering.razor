@@ -1,0 +1,726 @@
+@page "/inventering/{InventeringId:int}"
+@rendermode InteractiveServer
+@using System.Net.Http.Json
+@using PlantApp.Dtos
+@using PlantApp.Models
+@using PlantApp.Services
+@inject IJSRuntime JS
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@attribute [Authorize(Roles = "Admin,Inventerare")]
+@implements IAsyncDisposable
+
+<PageTitle>Inventering @InventeringId</PageTitle>
+
+<div class="inventering-page">
+    <div id="inventering-karta" class="inventering-karta"></div>
+
+    @if (_loadError is not null)
+    {
+        <div class="karta-status karta-status--fel">@_loadError</div>
+    }
+    else if (!_mapReady)
+    {
+        <div class="karta-status">Laddar karta…</div>
+    }
+
+    @if (_toastMessage is not null)
+    {
+        <div class="karta-toast">@_toastMessage</div>
+    }
+
+    @if (_sparStatus is not null)
+    {
+        <div class="spar-status">@_sparStatus</div>
+    }
+
+    @if (_markerar)
+    {
+        <div class="markering-banner">
+            <span class="markering-banner__text">Klicka i kartan för att sätta provytans plats.</span>
+            <button type="button" class="markering-banner__avbryt" @onclick="AvbrytMarkering">Avbryt</button>
+        </div>
+    }
+
+    @* Lista över tagna provytor (vänster på desktop, overlay på mobil). *@
+    @if (_mapReady)
+    {
+        <div class="provyta-lista @(_listaOppen ? "provyta-lista--oppen" : null)">
+            <button type="button" class="provyta-lista__flik" @onclick="ToggleLista"
+                    aria-expanded="@_listaOppen" title="Visa/dölj provytor">
+                <span class="provyta-lista__flik-ikon">🔬</span>
+                <span class="provyta-lista__flik-antal">@_provytor.Count</span>
+            </button>
+
+            <div class="provyta-lista__kropp">
+                <div class="provyta-lista__header">
+                    <div>
+                        <h2 class="provyta-lista__titel">Provytor</h2>
+                        <span class="provyta-lista__subtitel">
+                            @(_detail?.TraktNamn ?? $"Trakt {_detail?.TraktId}") · @_provytor.Count st
+                        </span>
+                    </div>
+                    <button type="button" class="provyta-lista__till-karta" title="Öppna traktens planteringskarta"
+                            @onclick="OppnaTraktKarta">🌱</button>
+                </div>
+
+                @if (_provytor.Count == 0)
+                {
+                    <div class="provyta-lista__tom">Inga provytor ännu. Använd knapparna nedan för att registrera din första.</div>
+                }
+                else
+                {
+                    <ul class="provyta-lista__lista">
+                        @for (var i = 0; i < _provytor.Count; i++)
+                        {
+                            var index = i;
+                            var provyta = _provytor[index];
+                            <li>
+                                <button type="button"
+                                        class="provyta-listrad @(_redigerarIndex == index ? "provyta-listrad--aktiv" : null)"
+                                        @onclick="() => OppnaProvyta(index)">
+                                    <span class="provyta-listrad__nr">#@(index + 1)</span>
+                                    <span class="provyta-listrad__info">
+                                        <span class="provyta-listrad__antal">@(provyta.Antal ?? 0) plantor</span>
+                                        <span class="provyta-listrad__sort">
+                                            @(string.IsNullOrWhiteSpace(provyta.Tradsort) ? "– trädslag ej satt –" : provyta.Tradsort)
+                                        </span>
+                                    </span>
+                                    <span class="provyta-listrad__plats" title="@(provyta.HarPlats ? "Markerad på kartan" : "Ingen plats")">
+                                        @(provyta.HarPlats ? "📍" : "◯")
+                                    </span>
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    }
+
+    @* Kompakt formkort för att skapa/redigera en provyta. *@
+    @if (_redigerarIndex is not null && _redigerarIndex < _provytor.Count && !_markerar)
+    {
+        var provyta = _provytor[_redigerarIndex.Value];
+        <div class="provyta-form">
+            <div class="provyta-form__header">
+                <span class="provyta-form__titel">Provyta #@(_redigerarIndex + 1)</span>
+                <button type="button" class="provyta-form__stang" title="Stäng" @onclick="StangForm">&times;</button>
+            </div>
+
+            <div class="provyta-form__grid">
+                <div class="falt falt--kompakt">
+                    <label>Antal plantor</label>
+                    <input type="number" min="0" class="falt__input"
+                           value="@provyta.Antal" @onchange="e => OnAntalChanged(e)" />
+                </div>
+                <div class="falt falt--kompakt">
+                    <label>Trädslag</label>
+                    <select class="falt__input" value="@(provyta.Tradsort ?? "")" @onchange="e => OnTradsortChanged(e)">
+                        <option value="">– Ej angiven –</option>
+                        @foreach (var sort in Tradsorter.Standard)
+                        {
+                            <option value="@sort">@sort</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="falt falt--kompakt">
+                <label>Kommentar / skada</label>
+                <textarea class="falt__input falt__textarea" rows="2"
+                          placeholder="Notera t.ex. skador eller avvikelser"
+                          value="@provyta.Kommentar" @onchange="e => OnKommentarChanged(e)"></textarea>
+            </div>
+
+            <div class="provyta-form__plats">
+                <span class="provyta-form__plats-status">
+                    @(provyta.HarPlats ? "📍 Plats satt" : "◯ Ingen plats")
+                </span>
+                <div class="provyta-form__plats-knappar">
+                    <button type="button" class="knapp knapp--sekundar knapp--liten" @onclick="MarkeraPaKartan">
+                        Flytta på kartan
+                    </button>
+                    <button type="button" class="knapp knapp--sekundar knapp--liten" @onclick="() => SattMinPositionAsync(_redigerarIndex!.Value)">
+                        Min position
+                    </button>
+                </div>
+            </div>
+
+            <div class="provyta-form__actions">
+                <button type="button" class="knapp knapp--fara knapp--liten" @onclick="() => TaBortProvytaAsync(_redigerarIndex!.Value)">
+                    Ta bort
+                </button>
+                <button type="button" class="knapp knapp--primar knapp--liten" @onclick="StangForm">
+                    Klar
+                </button>
+            </div>
+        </div>
+    }
+
+    @* Botten-åtgärdsrad: registrera ny provyta. *@
+    @if (_mapReady && _redigerarIndex is null && !_markerar)
+    {
+        <div class="inventering-actions">
+            <button type="button" class="inventering-actions__knapp inventering-actions__knapp--primar"
+                    @onclick="RegistreraProvytaPaKartan">
+                📍 Registrera provyta
+            </button>
+            <button type="button" class="inventering-actions__knapp"
+                    @onclick="RegistreraProvytaPaMinPositionAsync" disabled="@_hamtarPosition">
+                @(_hamtarPosition ? "Hämtar position…" : "🛰 På min position")
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int InventeringId { get; set; }
+
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<Inventering>? _selfRef;
+
+    private bool _mapReady;
+    private string? _loadError;
+
+    private InventeringDetailDto? _detail;
+    private readonly List<ProvytaEntry> _provytor = new();
+
+    // Index för den provyta vars formulär är öppet, eller null.
+    private int? _redigerarIndex;
+    // Sant medan användaren väljer plats i kartan.
+    private bool _markerar;
+    private bool _hamtarPosition;
+    private bool _listaOppen;
+
+    private string? _toastMessage;
+    private CancellationTokenSource? _toastCts;
+
+    // Auto-spara-status ("Sparar…" / "Sparat").
+    private string? _sparStatus;
+    private CancellationTokenSource? _sparCts;
+    private CancellationTokenSource? _debounceCts;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+
+            _detail = await client.GetFromJsonAsync<InventeringDetailDto>(
+                $"{NavigationManager.BaseUri}api/inventering/{InventeringId}");
+
+            if (_detail is null)
+            {
+                _loadError = "Inventeringsomgången kunde inte hittas.";
+                StateHasChanged();
+                return;
+            }
+
+            _provytor.Clear();
+            _provytor.AddRange(_detail.Provytor.Select(p => new ProvytaEntry
+            {
+                Antal = p.AntalPlantor,
+                Tradsort = p.Tradsort,
+                Kommentar = p.Kommentar,
+                Latitud = p.Latitud,
+                Longitud = p.Longitud
+            }));
+
+            _module = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./Components/Pages/Inventering.razor.js");
+            _selfRef = DotNetObjectReference.Create(this);
+
+            var geoJson = await client.GetStringAsync(
+                $"{NavigationManager.BaseUri}api/trakt/{_detail.TraktId}/geojson");
+            await _module.InvokeVoidAsync("initMap", "inventering-karta", geoJson, _selfRef);
+
+            await ReloadProvytorLayerAsync(client);
+            await RefreshTempMarkorerAsync();
+
+            _mapReady = true;
+            _listaOppen = _provytor.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Kunde inte ladda inventeringen: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    private void ToggleLista()
+    {
+        _listaOppen = !_listaOppen;
+    }
+
+    // Öppnar en befintlig provyta för redigering och panorerar till dess plats.
+    private async Task OppnaProvyta(int index)
+    {
+        if (index < 0 || index >= _provytor.Count)
+        {
+            return;
+        }
+
+        _redigerarIndex = index;
+        _markerar = false;
+
+        var provyta = _provytor[index];
+        if (_module is not null)
+        {
+            await _module.InvokeVoidAsync("setActivePin", provyta.Latitud, provyta.Longitud);
+            if (provyta.HarPlats)
+            {
+                await _module.InvokeVoidAsync("focusPoint", provyta.Latitud, provyta.Longitud);
+            }
+        }
+    }
+
+    private async Task StangForm()
+    {
+        _redigerarIndex = null;
+        if (_module is not null)
+        {
+            await _module.InvokeVoidAsync("setActivePin", (double?)null, (double?)null);
+        }
+    }
+
+    // "Registrera provyta" – skapa ny och gå direkt in i markeringsläge på kartan.
+    private async Task RegistreraProvytaPaKartan()
+    {
+        var entry = new ProvytaEntry();
+        _provytor.Add(entry);
+        _redigerarIndex = _provytor.Count - 1;
+        _listaOppen = true;
+        await StartMarkeringAsync();
+    }
+
+    // "Registrera på min position" – skapa ny provyta och sätt platsen till GPS.
+    private async Task RegistreraProvytaPaMinPositionAsync()
+    {
+        if (_module is null)
+        {
+            return;
+        }
+
+        _hamtarPosition = true;
+        try
+        {
+            var pos = await _module.InvokeAsync<GeoPosition>("getCurrentPosition");
+
+            var entry = new ProvytaEntry { Latitud = pos.Lat, Longitud = pos.Lng };
+            _provytor.Add(entry);
+            _redigerarIndex = _provytor.Count - 1;
+            _listaOppen = true;
+
+            await RefreshTempMarkorerAsync();
+            await _module.InvokeVoidAsync("setActivePin", entry.Latitud, entry.Longitud);
+            ShowToast("Provyta skapad på din position.");
+            await SparaAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"Kunde inte hämta position: {ex.Message}");
+        }
+        finally
+        {
+            _hamtarPosition = false;
+        }
+    }
+
+    // Sätter den öppna provytans plats till användarens GPS-position.
+    private async Task SattMinPositionAsync(int index)
+    {
+        if (_module is null || index < 0 || index >= _provytor.Count)
+        {
+            return;
+        }
+
+        _hamtarPosition = true;
+        try
+        {
+            var pos = await _module.InvokeAsync<GeoPosition>("getCurrentPosition");
+            _provytor[index].Latitud = pos.Lat;
+            _provytor[index].Longitud = pos.Lng;
+
+            await RefreshTempMarkorerAsync();
+            await _module.InvokeVoidAsync("setActivePin", pos.Lat, pos.Lng);
+            ShowToast("Plats satt till din position.");
+            await SparaAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"Kunde inte hämta position: {ex.Message}");
+        }
+        finally
+        {
+            _hamtarPosition = false;
+        }
+    }
+
+    // Går in i markeringsläge för den öppna provytan.
+    private async Task MarkeraPaKartan()
+    {
+        await StartMarkeringAsync();
+    }
+
+    private async Task StartMarkeringAsync()
+    {
+        if (_module is null || _redigerarIndex is null)
+        {
+            return;
+        }
+
+        _markerar = true;
+        ShowToast("Klicka i kartan för att sätta provytans plats.");
+        try
+        {
+            await _module.InvokeVoidAsync("startPointPicking");
+        }
+        catch
+        {
+            // Icke-kritiskt om kartan inte är redo.
+        }
+    }
+
+    private async Task AvbrytMarkering()
+    {
+        _markerar = false;
+        if (_module is not null)
+        {
+            try
+            {
+                await _module.InvokeVoidAsync("cancelPointPicking");
+            }
+            catch
+            {
+                // Icke-kritiskt.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Anropas från JavaScript när användaren klickat i kartan i markeringsläge.
+    /// </summary>
+    [JSInvokable]
+    public async Task OnMapPointPicked(double latitud, double longitud)
+    {
+        if (_redigerarIndex is not { } index || index < 0 || index >= _provytor.Count)
+        {
+            _markerar = false;
+            return;
+        }
+
+        _provytor[index].Latitud = latitud;
+        _provytor[index].Longitud = longitud;
+        _markerar = false;
+
+        await RefreshTempMarkorerAsync();
+        if (_module is not null)
+        {
+            await _module.InvokeVoidAsync("setActivePin", latitud, longitud);
+        }
+        await InvokeAsync(StateHasChanged);
+        ShowToast("Provytans plats satt.");
+        await SparaAsync();
+    }
+
+    private async Task TaBortProvytaAsync(int index)
+    {
+        if (index < 0 || index >= _provytor.Count)
+        {
+            return;
+        }
+
+        _provytor.RemoveAt(index);
+        _redigerarIndex = null;
+        _markerar = false;
+
+        if (_module is not null)
+        {
+            await _module.InvokeVoidAsync("setActivePin", (double?)null, (double?)null);
+        }
+        await RefreshTempMarkorerAsync();
+        await SparaAsync();
+    }
+
+    private void OnAntalChanged(ChangeEventArgs e)
+    {
+        if (_redigerarIndex is not { } index || index < 0 || index >= _provytor.Count)
+        {
+            return;
+        }
+
+        _provytor[index].Antal = int.TryParse(e.Value?.ToString(), out var antal) && antal >= 0
+            ? antal
+            : null;
+        QueueAutoSave();
+    }
+
+    private void OnTradsortChanged(ChangeEventArgs e)
+    {
+        if (_redigerarIndex is not { } index || index < 0 || index >= _provytor.Count)
+        {
+            return;
+        }
+
+        var value = e.Value?.ToString();
+        _provytor[index].Tradsort = string.IsNullOrWhiteSpace(value) ? null : value;
+        QueueAutoSave();
+    }
+
+    private void OnKommentarChanged(ChangeEventArgs e)
+    {
+        if (_redigerarIndex is not { } index || index < 0 || index >= _provytor.Count)
+        {
+            return;
+        }
+
+        var value = e.Value?.ToString();
+        _provytor[index].Kommentar = string.IsNullOrWhiteSpace(value) ? null : value;
+        QueueAutoSave();
+    }
+
+    // Debouncad auto-spara för textfält (undviker anrop vid varje tangenttryck).
+    private void QueueAutoSave()
+    {
+        _debounceCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _debounceCts = cts;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(700), cts.Token);
+            }
+            catch (TaskCanceledException)
+            {
+                return;
+            }
+
+            if (!cts.Token.IsCancellationRequested)
+            {
+                await InvokeAsync(SparaAsync);
+            }
+        });
+    }
+
+    private async Task RefreshTempMarkorerAsync()
+    {
+        if (_module is null)
+        {
+            return;
+        }
+
+        var punkter = _provytor
+            .Select((p, i) => new { index = i, lat = p.Latitud, lng = p.Longitud })
+            .Where(p => p.lat is not null && p.lng is not null)
+            .Select(p => new { p.index, lat = p.lat!.Value, lng = p.lng!.Value })
+            .ToArray();
+
+        try
+        {
+            await _module.InvokeVoidAsync("setTempProvytaMarkorer", punkter);
+        }
+        catch
+        {
+            // Icke-kritiskt.
+        }
+    }
+
+    private async Task ReloadProvytorLayerAsync(HttpClient client)
+    {
+        if (_module is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var provytorGeoJson = await client.GetStringAsync(
+                $"{NavigationManager.BaseUri}api/inventering/{InventeringId}/provytor/geojson");
+            await _module.InvokeVoidAsync("setProvytaLager", provytorGeoJson);
+        }
+        catch
+        {
+            // Icke-kritiskt.
+        }
+    }
+
+    // Sparar hela provyta-listan löpande (auto-spara, ingen "Skicka in").
+    private async Task SparaAsync()
+    {
+        SetSparStatus("Sparar…");
+
+        try
+        {
+            var dto = new InventeringUpdateDto
+            {
+                Provytor = _provytor.Select(p => new InventeringsProvytaInputDto
+                {
+                    AntalPlantor = p.Antal ?? 0,
+                    Tradsort = p.Tradsort,
+                    Kommentar = p.Kommentar,
+                    Latitud = p.Latitud,
+                    Longitud = p.Longitud
+                }).ToList()
+            };
+
+            var client = HttpClientFactory.CreateClient();
+            var response = await client.PutAsJsonAsync(
+                $"{NavigationManager.BaseUri}api/inventering/{InventeringId}", dto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _detail = await response.Content.ReadFromJsonAsync<InventeringDetailDto>();
+                await ReloadProvytorLayerAsync(client);
+                SetSparStatus("Sparat", autoDoljs: true);
+            }
+            else
+            {
+                SetSparStatus($"Kunde inte spara (HTTP {(int)response.StatusCode})", autoDoljs: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            SetSparStatus($"Fel vid sparande: {ex.Message}", autoDoljs: true);
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OppnaTraktKarta()
+    {
+        if (_detail is not null)
+        {
+            NavigationManager.NavigateTo($"/trakt/{_detail.TraktId}");
+        }
+    }
+
+    private void SetSparStatus(string text, bool autoDoljs = false)
+    {
+        _sparCts?.Cancel();
+        _sparStatus = text;
+
+        if (!autoDoljs)
+        {
+            return;
+        }
+
+        var cts = new CancellationTokenSource();
+        _sparCts = cts;
+        _ = HideSparStatusAfterDelayAsync(cts.Token);
+    }
+
+    private async Task HideSparStatusAfterDelayAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2), token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
+        _sparStatus = null;
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Nedkopplad – inget att uppdatera.
+        }
+    }
+
+    private void ShowToast(string message)
+    {
+        _toastCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _toastCts = cts;
+        _toastMessage = message;
+
+        _ = HideToastAfterDelayAsync(cts.Token);
+    }
+
+    private async Task HideToastAfterDelayAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2.5), cancellationToken);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        _toastMessage = null;
+
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Nedkopplad – inget att uppdatera.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _toastCts?.Cancel();
+        _sparCts?.Cancel();
+        _debounceCts?.Cancel();
+
+        try
+        {
+            if (_module is not null)
+            {
+                await _module.InvokeVoidAsync("dispose", "inventering-karta");
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // Nedkopplad – inget att städa.
+        }
+
+        _selfRef?.Dispose();
+    }
+
+    private sealed class ProvytaEntry
+    {
+        public int? Antal { get; set; }
+        public string? Tradsort { get; set; }
+        public string? Kommentar { get; set; }
+        public double? Latitud { get; set; }
+        public double? Longitud { get; set; }
+
+        public bool HarPlats => Latitud is not null && Longitud is not null;
+    }
+
+    // Matchar { lat, lng } som JS getCurrentPosition returnerar.
+    private sealed class GeoPosition
+    {
+        public double Lat { get; set; }
+        public double Lng { get; set; }
+    }
+}

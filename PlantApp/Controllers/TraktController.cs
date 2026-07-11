@@ -94,6 +94,7 @@ public class TraktController : ControllerBase
                 t.Namn,
                 Status = t.Status.ToString(),
                 t.SkapadDatum,
+                t.InventeringMojlig,
                 AntalDelomraden = t.DelOmraden.Count,
                 AntalProvytor = t.DelOmraden.SelectMany(d => d.Provytor).Count(),
                 TotaltAntalPlantor = t.DelOmraden.Sum(d => d.AntalPlantor ?? 0)
@@ -101,6 +102,28 @@ public class TraktController : ControllerBase
             .ToListAsync(cancellationToken);
 
         return Ok(trakter);
+    }
+
+    /// <summary>
+    /// Sätter om en trakt är öppnad för inventering. Admin-funktion.
+    /// </summary>
+    [HttpPut("{id:int}/inventering-mojlig")]
+    public async Task<IActionResult> SetInventeringMojlig(
+        int id,
+        [FromBody] SetInventeringMojligDto dto,
+        CancellationToken cancellationToken)
+    {
+        var trakt = await _db.Trakter.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
+        if (trakt is null)
+        {
+            return NotFound();
+        }
+
+        trakt.InventeringMojlig = dto.Mojlig;
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return NoContent();
     }
 
     /// <summary>

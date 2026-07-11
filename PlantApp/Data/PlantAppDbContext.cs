@@ -16,6 +16,10 @@ public class PlantAppDbContext : DbContext
 
     public DbSet<Provyta> Provytor => Set<Provyta>();
 
+    public DbSet<Inventering> Inventeringar => Set<Inventering>();
+
+    public DbSet<InventeringsProvyta> InventeringsProvytor => Set<InventeringsProvyta>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -43,6 +47,10 @@ public class PlantAppDbContext : DbContext
                   .HasMaxLength(100);
 
             entity.Property(t => t.MalPlantorPerHektar);
+
+            entity.Property(t => t.InventeringMojlig)
+                  .IsRequired()
+                  .HasDefaultValue(false);
 
             entity.HasMany(t => t.DelOmraden)
                   .WithOne(d => d.Trakt)
@@ -110,6 +118,55 @@ public class PlantAppDbContext : DbContext
 
             // Valfri provyta-plats lagras nativt som en punkt i SWEREF99 TM (SRID 3006).
             // Precis som DelOmrade.Geometri används kolumntypen 'geometry' (projicerat CRS).
+            entity.Property(p => p.Plats)
+                  .HasColumnType("geometry");
+        });
+
+        modelBuilder.Entity<Inventering>(entity =>
+        {
+            entity.ToTable("Inventeringar");
+
+            entity.HasKey(i => i.Id);
+
+            entity.Property(i => i.SkapadDatum)
+                  .IsRequired();
+
+            entity.Property(i => i.TilldeladAnvandare)
+                  .HasMaxLength(100);
+
+            // Lagra enum som läsbar text i databasen i stället för int.
+            entity.Property(i => i.Status)
+                  .IsRequired()
+                  .HasConversion<string>()
+                  .HasMaxLength(20);
+
+            entity.HasOne(i => i.Trakt)
+                  .WithMany()
+                  .HasForeignKey(i => i.TraktId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(i => i.Provytor)
+                  .WithOne(p => p.Inventering)
+                  .HasForeignKey(p => p.InventeringId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<InventeringsProvyta>(entity =>
+        {
+            entity.ToTable("InventeringsProvytor");
+
+            entity.HasKey(p => p.Id);
+
+            entity.Property(p => p.AntalPlantor)
+                  .IsRequired();
+
+            entity.Property(p => p.Tradsort)
+                  .HasMaxLength(100);
+
+            entity.Property(p => p.Kommentar)
+                  .HasMaxLength(1000);
+
+            // Valfri provyta-plats lagras nativt som en punkt i SWEREF99 TM (SRID 3006).
             entity.Property(p => p.Plats)
                   .HasColumnType("geometry");
         });
