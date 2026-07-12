@@ -15,6 +15,13 @@
         </NavLink>
     </AuthorizeView>
 
+    <AuthorizeView Roles="Plantsattare,Admin">
+        <NavLink class="app-nav__link" href="/tidrapport">
+            <span class="app-nav__ikon" aria-hidden="true">⏱️</span>
+            <span class="app-nav__text">Tidrapport</span>
+        </NavLink>
+    </AuthorizeView>
+
     <AuthorizeView>
         <Authorized>
             <form class="app-nav__form" action="/logout" method="post">

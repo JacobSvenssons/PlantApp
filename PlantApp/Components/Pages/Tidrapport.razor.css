@@ -1,0 +1,129 @@
+.tid-page {
+    min-height: calc(100vh - 3.5rem);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.tid-card {
+    width: min(820px, 100%);
+}
+
+.tid-card__brand {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.tid-card__logo {
+    font-size: 2.25rem;
+    line-height: 1;
+}
+
+.tid-card__titel {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.tid-card__subtitel {
+    margin: 0.25rem 0 0;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.tid-vecka {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    margin-bottom: 1.25rem;
+}
+
+.tid-vecka__etikett {
+    font-weight: 600;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+}
+
+.tid-vecka__datum {
+    font-weight: 400;
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+}
+
+.tid-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    align-items: flex-end;
+    margin-bottom: 1.5rem;
+}
+
+.tid-form__falt {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    flex: 1 1 140px;
+}
+
+.tid-form__falt--bred {
+    flex: 2 1 240px;
+}
+
+.tid-form__falt label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+
+.tid-input {
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: #fff;
+}
+
+.tid-form__knapp {
+    flex: 0 0 auto;
+}
+
+.tid-tabell {
+    width: 100%;
+}
+
+.tid-chip {
+    display: inline-block;
+    margin-right: 0.5rem;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(47, 107, 64, 0.12);
+    color: #1f4d2e;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.tid-melding {
+    padding: 1rem;
+    border-radius: 10px;
+    background: rgba(47, 107, 64, 0.06);
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+.tid-melding--fel {
+    background: #fbe9e9;
+    color: #9b1c1c;
+}
+
+@media (max-width: 640px) {
+    .tid-form__falt {
+        flex-basis: 100%;
+    }
+}

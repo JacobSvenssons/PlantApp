@@ -35,5 +35,12 @@ public class Trakt
     /// </summary>
     public bool InventeringMojlig { get; set; }
 
+    /// <summary>
+    /// Åsidosätter den globala ersättningsformen för denna trakt. Null innebär att den
+    /// globala standarden (<see cref="EkonomiInstallning.StandardErsattningsTyp"/>) gäller,
+    /// om inte ett delområde i sin tur satt en egen. Underlag för ekonomi/lön.
+    /// </summary>
+    public ErsattningsTyp? ErsattningsTyp { get; set; }
+
     public ICollection<DelOmrade> DelOmraden { get; set; } = new List<DelOmrade>();
 }

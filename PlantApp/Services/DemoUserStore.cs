@@ -1,8 +1,8 @@
 namespace PlantApp.Services;
 
 /// <summary>
-/// Lättviktig demo-användarlagring för cookie-autentisering. Innehåller tre seedade
-/// användare (en per roll) med kända lösenord för morgondagens demo.
+/// Lättviktig demo-användarlagring för cookie-autentisering. Innehåller seedade
+/// demo-användare (admin, plantbas, två plantsättare och inventerare) med kända lösenord.
 /// OBS: detta är medvetet enkelt för demo – ersätt med ASP.NET Core Identity mot databas
 /// för produktion (riktig lösenordshashning, användarhantering m.m.).
 /// </summary>
@@ -18,10 +18,11 @@ public sealed class DemoUserStore
 
     private readonly IReadOnlyList<DemoUser> _users =
     [
-        new("admin", "admin123", "Admin Adminsson", RoleAdmin),
-        new("plantbas", "plantbas123", "Bosse Plantbas", RolePlantbas),
-        new("plantsattare", "plantor123", "Petra Plantsättare", RolePlantsattare),
-        new("inventerare", "invent123", "Ina Inventerare", RoleInventerare),
+        new("admin", "admin123", "Jonas Admin", RoleAdmin),
+        new("plantbas", "plantbas123", "Bengt Bas", RolePlantbas),
+        new("peter", "plantor123", "Peter Plant", RolePlantsattare),
+        new("tina", "plantor123", "Tina Träd", RolePlantsattare),
+        new("inventerare", "invent123", "Inger Inventerare", RoleInventerare),
     ];
 
     /// <summary>

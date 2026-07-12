@@ -35,6 +35,19 @@ public class DelOmrade
     public int? AntalPlantor { get; set; }
 
     /// <summary>
+    /// Datum då plantor först registrerades på delområdet (sätts automatiskt när
+    /// <see cref="AntalPlantor"/> går från null till ett värde). Används som period/datum
+    /// i ekonomisammanställningen. Null tills registrering skett.
+    /// </summary>
+    public DateTime? RegistreradDatum { get; set; }
+
+    /// <summary>
+    /// Åsidosätter trakten/globala ersättningsformen för detta delområde. Null innebär
+    /// att traktens (eller den globala) ersättningsformen gäller. Underlag för ekonomi/lön.
+    /// </summary>
+    public ErsattningsTyp? ErsattningsTyp { get; set; }
+
+    /// <summary>
     /// Fritext-avvikelse eller kommentar om delområdet, t.ex. hinder i terrängen
     /// eller noteringar från planteringen. Valfri.
     /// </summary>

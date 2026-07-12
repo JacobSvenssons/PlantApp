@@ -20,6 +20,10 @@ public class PlantAppDbContext : DbContext
 
     public DbSet<InventeringsProvyta> InventeringsProvytor => Set<InventeringsProvyta>();
 
+    public DbSet<EkonomiInstallning> EkonomiInstallningar => Set<EkonomiInstallning>();
+
+    public DbSet<Tidrapport> Tidrapporter => Set<Tidrapport>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -52,6 +56,11 @@ public class PlantAppDbContext : DbContext
                   .IsRequired()
                   .HasDefaultValue(false);
 
+            // Ersättningsform (override) lagras som läsbar text; null = ärv global/trakt.
+            entity.Property(t => t.ErsattningsTyp)
+                  .HasConversion<string>()
+                  .HasMaxLength(20);
+
             entity.HasMany(t => t.DelOmraden)
                   .WithOne(d => d.Trakt)
                   .HasForeignKey(d => d.TraktId)
@@ -79,6 +88,13 @@ public class PlantAppDbContext : DbContext
             entity.Property(d => d.MalPlantorPerHektar);
 
             entity.Property(d => d.AntalPlantor);
+
+            entity.Property(d => d.RegistreradDatum);
+
+            // Ersättningsform (override) lagras som läsbar text; null = ärv trakt/global.
+            entity.Property(d => d.ErsattningsTyp)
+                  .HasConversion<string>()
+                  .HasMaxLength(20);
 
             entity.Property(d => d.Kommentar)
                   .HasMaxLength(1000);
@@ -169,6 +185,63 @@ public class PlantAppDbContext : DbContext
             // Valfri provyta-plats lagras nativt som en punkt i SWEREF99 TM (SRID 3006).
             entity.Property(p => p.Plats)
                   .HasColumnType("geometry");
+        });
+
+        modelBuilder.Entity<EkonomiInstallning>(entity =>
+        {
+            entity.ToTable("EkonomiInstallningar");
+
+            entity.HasKey(e => e.Id);
+
+            // Lagra enum som läsbar text i databasen i stället för int.
+            entity.Property(e => e.StandardErsattningsTyp)
+                  .IsRequired()
+                  .HasConversion<string>()
+                  .HasMaxLength(20);
+
+            // Enradstabell: seeda den globala standarden (Id = 1).
+            entity.HasData(new EkonomiInstallning
+            {
+                Id = 1,
+                StandardErsattningsTyp = ErsattningsTyp.HelAckord
+            });
+        });
+
+        modelBuilder.Entity<Tidrapport>(entity =>
+        {
+            entity.ToTable("Tidrapporter");
+
+            entity.HasKey(t => t.Id);
+
+            entity.Property(t => t.Anvandare)
+                  .IsRequired()
+                  .HasMaxLength(100);
+
+            entity.Property(t => t.VeckoStart)
+                  .IsRequired();
+
+            entity.Property(t => t.AntalTimmar)
+                  .IsRequired();
+
+            // Lagra enum som läsbar text i databasen i stället för int.
+            entity.Property(t => t.ErsattningsTyp)
+                  .IsRequired()
+                  .HasConversion<string>()
+                  .HasMaxLength(20);
+
+            entity.Property(t => t.Kommentar)
+                  .HasMaxLength(1000);
+
+            entity.Property(t => t.SkapadDatum)
+                  .IsRequired();
+
+            // Valfri trakt-koppling; om trakten raderas nollställs kopplingen.
+            entity.HasOne(t => t.Trakt)
+                  .WithMany()
+                  .HasForeignKey(t => t.TraktId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(t => new { t.Anvandare, t.VeckoStart });
         });
     }
 }

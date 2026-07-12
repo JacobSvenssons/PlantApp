@@ -37,6 +37,10 @@ namespace PlantApp.Migrations
                     b.Property<double>("Areal")
                         .HasColumnType("float");
 
+                    b.Property<string>("ErsattningsTyp")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<Polygon>("Geometri")
                         .HasColumnType("geometry");
 
@@ -46,6 +50,9 @@ namespace PlantApp.Migrations
 
                     b.Property<int?>("MalPlantorPerHektar")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("RegistreradDatum")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -68,6 +75,31 @@ namespace PlantApp.Migrations
                     b.HasIndex("TraktId");
 
                     b.ToTable("DelOmraden", (string)null);
+                });
+
+            modelBuilder.Entity("PlantApp.Models.EkonomiInstallning", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("StandardErsattningsTyp")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EkonomiInstallningar", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            StandardErsattningsTyp = "HelAckord"
+                        });
                 });
 
             modelBuilder.Entity("PlantApp.Models.Inventering", b =>
@@ -159,6 +191,49 @@ namespace PlantApp.Migrations
                     b.ToTable("Provytor", (string)null);
                 });
 
+            modelBuilder.Entity("PlantApp.Models.Tidrapport", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<double>("AntalTimmar")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Anvandare")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ErsattningsTyp")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Kommentar")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("SkapadDatum")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("TraktId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("VeckoStart")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TraktId");
+
+                    b.HasIndex("Anvandare", "VeckoStart");
+
+                    b.ToTable("Tidrapporter", (string)null);
+                });
+
             modelBuilder.Entity("PlantApp.Models.Trakt", b =>
                 {
                     b.Property<int>("Id")
@@ -166,6 +241,10 @@ namespace PlantApp.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ErsattningsTyp")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<bool>("InventeringMojlig")
                         .ValueGeneratedOnAdd()
@@ -239,6 +318,16 @@ namespace PlantApp.Migrations
                         .IsRequired();
 
                     b.Navigation("DelOmrade");
+                });
+
+            modelBuilder.Entity("PlantApp.Models.Tidrapport", b =>
+                {
+                    b.HasOne("PlantApp.Models.Trakt", "Trakt")
+                        .WithMany()
+                        .HasForeignKey("TraktId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Trakt");
                 });
 
             modelBuilder.Entity("PlantApp.Models.DelOmrade", b =>

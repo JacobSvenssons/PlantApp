@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using System.Net.Http.Json
 @using System.Globalization
+@using PlantApp.Models
 @using PlantApp.Services
 @attribute [Authorize(Roles = "Admin")]
 @inject IHttpClientFactory HttpClientFactory
@@ -55,6 +56,7 @@
                         <th>Status</th>
                         <th>Skapad</th>
                         <th>Inventering möjlig</th>
+                        <th>Ersättningsform</th>
                         <th class="tabell__actions">Åtgärd</th>
                     </tr>
                 </thead>
@@ -76,36 +78,22 @@
                                     <span>@(trakt.InventeringMojlig ? "Öppen" : "Stängd")</span>
                                 </label>
                             </td>
+                            <td>
+                                <select class="ersattning-select" value="@ErsattningsVal(trakt.ErsattningsTyp)"
+                                        @onchange="e => SetErsattningsTypAsync(trakt.Id, e)"
+                                        disabled="@(_uppdaterarErsattning == trakt.Id)">
+                                    <option value="">Standard (ärv)</option>
+                                    @foreach (var typ in AllaErsattningsTyper)
+                                    {
+                                        <option value="@((int)typ)">@ErsattningsTypText(typ)</option>
+                                    }
+                                </select>
+                            </td>
                             <td class="tabell__actions">
-                                @if (_bekraftaId == trakt.Id)
-                                {
-                                    <div class="bekrafta">
-                                        <span class="bekrafta__text">
-                                            Detta raderas permanent:
-                                        </span>
-                                        <ul class="bekrafta__lista">
-                                            <li>Trakten <strong>@trakt.Namn</strong></li>
-                                            <li>@trakt.AntalDelomraden delområden</li>
-                                            <li>@trakt.AntalProvytor provytor</li>
-                                            <li>@trakt.TotaltAntalPlantor registrerade plantor</li>
-                                        </ul>
-                                        <div class="bekrafta__knappar">
-                                            <button type="button" class="knapp-lank" @onclick="AvbrytRadera" disabled="@_raderar">
-                                                Avbryt
-                                            </button>
-                                            <button type="button" class="knapp-fara" @onclick="() => RaderaAsync(trakt.Id)" disabled="@_raderar">
-                                                @(_raderar ? "Raderar…" : "Ja, radera allt")
-                                            </button>
-                                        </div>
-                                    </div>
-                                }
-                                else
-                                {
-                                    <button type="button" class="knapp-fara knapp-fara--sekundar"
-                                            @onclick="() => BegarRadera(trakt.Id)" disabled="@_raderar">
-                                        Radera
-                                    </button>
-                                }
+                                <button type="button" class="knapp-fara knapp-fara--sekundar"
+                                        @onclick="() => BegarRadera(trakt.Id)" disabled="@_raderar">
+                                    Radera
+                                </button>
                             </td>
                         </tr>
                     }
@@ -114,6 +102,30 @@
         }
     </div>
 </div>
+
+@if (_bekraftaId is { } bekraftaId && _trakter?.FirstOrDefault(t => t.Id == bekraftaId) is { } bekraftaTrakt)
+{
+    <div class="bekrafta-overlay" @onclick="AvbrytRadera">
+        <div class="bekrafta-modal" @onclick:stopPropagation="true">
+            <h2 class="bekrafta-modal__titel">Radera trakt?</h2>
+            <p class="bekrafta-modal__text">Detta raderas permanent:</p>
+            <ul class="bekrafta-modal__lista">
+                <li>Trakten <strong>@bekraftaTrakt.Namn</strong></li>
+                <li>@bekraftaTrakt.AntalDelomraden delområden</li>
+                <li>@bekraftaTrakt.AntalProvytor provytor</li>
+                <li>@bekraftaTrakt.TotaltAntalPlantor registrerade plantor</li>
+            </ul>
+            <div class="bekrafta-modal__knappar">
+                <button type="button" class="knapp-lank" @onclick="AvbrytRadera" disabled="@_raderar">
+                    Avbryt
+                </button>
+                <button type="button" class="knapp-fara" @onclick="() => RaderaAsync(bekraftaTrakt.Id)" disabled="@_raderar">
+                    @(_raderar ? "Raderar…" : "Ja, radera allt")
+                </button>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     private List<TraktListItem>? _trakter;
@@ -124,6 +136,20 @@
     private bool _raderar;
 
     private int? _uppdaterarInventering;
+    private int? _uppdaterarErsattning;
+
+    private static readonly ErsattningsTyp[] AllaErsattningsTyper = Enum.GetValues<ErsattningsTyp>();
+
+    private static string ErsattningsVal(ErsattningsTyp? typ) =>
+        typ is { } t ? ((int)t).ToString() : "";
+
+    private static string ErsattningsTypText(ErsattningsTyp typ) => typ switch
+    {
+        ErsattningsTyp.HelAckord => "Helackord",
+        ErsattningsTyp.DelAckord => "Delackord",
+        ErsattningsTyp.Timpenning => "Timpenning",
+        _ => typ.ToString()
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -169,6 +195,51 @@
         finally
         {
             _uppdaterarInventering = null;
+        }
+    }
+
+    private async Task SetErsattningsTypAsync(int traktId, ChangeEventArgs e)
+    {
+        ErsattningsTyp? typ = int.TryParse(e.Value?.ToString(), out var value)
+            ? (ErsattningsTyp)value
+            : null;
+
+        _uppdaterarErsattning = traktId;
+        _message = null;
+        _loadError = null;
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var response = await client.PutAsJsonAsync(
+                $"{NavigationManager.BaseUri}api/ekonomi/trakt/{traktId}/ersattningstyp",
+                new { ErsattningsTyp = typ });
+
+            var trakt = _trakter?.FirstOrDefault(t => t.Id == traktId);
+            if (response.IsSuccessStatusCode)
+            {
+                if (trakt is not null)
+                {
+                    trakt.ErsattningsTyp = typ;
+                }
+
+                var namn = trakt?.Namn;
+                _message = typ is { } t
+                    ? $"\"{namn}\" använder nu {ErsattningsTypText(t).ToLowerInvariant()}."
+                    : $"\"{namn}\" använder nu standardersättningsformen.";
+            }
+            else
+            {
+                _loadError = $"Kunde inte uppdatera ersättningsform (HTTP {(int)response.StatusCode}).";
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Fel vid uppdatering av ersättningsform: {ex.Message}";
+        }
+        finally
+        {
+            _uppdaterarErsattning = null;
         }
     }
 
@@ -241,5 +312,6 @@
         public int AntalProvytor { get; set; }
         public int TotaltAntalPlantor { get; set; }
         public bool InventeringMojlig { get; set; }
+        public ErsattningsTyp? ErsattningsTyp { get; set; }
     }
 }

@@ -95,6 +95,7 @@ public class TraktController : ControllerBase
                 Status = t.Status.ToString(),
                 t.SkapadDatum,
                 t.InventeringMojlig,
+                t.ErsattningsTyp,
                 AntalDelomraden = t.DelOmraden.Count,
                 AntalProvytor = t.DelOmraden.SelectMany(d => d.Provytor).Count(),
                 TotaltAntalPlantor = t.DelOmraden.Sum(d => d.AntalPlantor ?? 0)
@@ -427,6 +428,17 @@ public class TraktController : ControllerBase
         delOmrade.MalPlantorPerHektar = dto.MalPlantorPerHektar;
         delOmrade.Kommentar = Normalisera(dto.Kommentar);
         delOmrade.TilldeladAnvandare = Normalisera(dto.TilldeladAnvandare);
+
+        // Sätt registreringsdatum första gången ett antal plantor registreras (underlag
+        // för ekonomi/period). Nollställ om registreringen tas bort helt.
+        if (delOmrade.AntalPlantor is > 0)
+        {
+            delOmrade.RegistreradDatum ??= DateTime.UtcNow;
+        }
+        else
+        {
+            delOmrade.RegistreradDatum = null;
+        }
 
         // Provytor skickas som en fullständig lista från klienten – ersätt de befintliga
         // raderna i stället för att försöka diffa fram vilka som lagts till/tagits bort.

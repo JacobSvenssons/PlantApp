@@ -1,0 +1,219 @@
+.ekonomi-page {
+    min-height: calc(100vh - 3.5rem);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.ekonomi-card {
+    width: min(1000px, 100%);
+}
+
+.ekonomi-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.ekonomi-card__brand {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.ekonomi-card__logo {
+    font-size: 2.25rem;
+    line-height: 1;
+}
+
+.ekonomi-card__titel {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.ekonomi-card__subtitel {
+    margin: 0.15rem 0 0;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+}
+
+.ekonomi-melding {
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(31, 77, 46, 0.06);
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+}
+
+.ekonomi-melding--fel {
+    background: #fbe9e9;
+    color: #9b1c1c;
+}
+
+.ekonomi-hjalp {
+    margin: 0.25rem 0 0.75rem;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.ekonomi-tabell__rubrik {
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+
+/* Standardersättningsform */
+.ekonomi-installning {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: linear-gradient(180deg, rgba(47, 107, 64, 0.05), rgba(47, 107, 64, 0.02));
+}
+
+.ekonomi-installning__val {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.ekonomi-installning__status {
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+}
+
+.ekonomi-select,
+.ekonomi-input {
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: #fff;
+}
+
+.ekonomi-select--sm {
+    padding: 0.3rem 0.45rem;
+    font-size: 0.82rem;
+}
+
+/* Periodfilter */
+.ekonomi-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.ekonomi-filter__falt {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+}
+
+.ekonomi-filter__knappar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Summering */
+.ekonomi-summering {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Tabell */
+.ekonomi-tabell__topp {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.ekonomi-override {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    background: rgba(47, 107, 64, 0.12);
+    color: #1f4d2e;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.ekonomi-person-rad {
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+
+.ekonomi-person-rad:hover {
+    background: rgba(47, 107, 64, 0.06);
+}
+
+.ekonomi-person-rad--vald {
+    background: rgba(47, 107, 64, 0.1);
+    font-weight: 600;
+}
+
+.ekonomi-person-rad__pil {
+    display: inline-block;
+    width: 1.1rem;
+    color: #2f6b40;
+    font-size: 0.7rem;
+}
+
+.ekonomi-detalj-rad > td {
+    padding: 0;
+    background: rgba(47, 107, 64, 0.04);
+}
+
+.ekonomi-detalj {
+    padding: 0.75rem 1rem 1rem;
+}
+
+.ekonomi-detalj__rubrik {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #1f4d2e;
+}
+
+.tabell--inbaddad {
+    margin: 0;
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.ekonomi-tim-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.tid-chip {
+    display: inline-block;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(47, 107, 64, 0.12);
+    color: #1f4d2e;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+@media (max-width: 640px) {
+    .ekonomi-filter {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
