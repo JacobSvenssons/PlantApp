@@ -153,6 +153,104 @@ public class TidrapportController : ControllerBase
 		return Ok(summering);
 	}
 
+	/// <summary>
+	/// Admin: hämtar enskilda tidrapportrader för en person, valfritt filtrerat på
+	/// veckoperiod. Används för att granska/redigera/ta bort rapporter i ekonomivyn.
+	/// </summary>
+	[HttpGet("rader")]
+	public async Task<IActionResult> GetRader(
+		[FromQuery] string anvandare,
+		[FromQuery] DateTime? fran,
+		[FromQuery] DateTime? till,
+		CancellationToken cancellationToken)
+	{
+		if (string.IsNullOrWhiteSpace(anvandare))
+		{
+			return BadRequest("Användare saknas.");
+		}
+
+		var query = _db.Tidrapporter
+			.AsNoTracking()
+			.Include(t => t.Trakt)
+			.Where(t => t.Anvandare == anvandare);
+
+		if (fran is { } f)
+		{
+			var franDatum = f.Date;
+			query = query.Where(t => t.VeckoStart >= franDatum);
+		}
+
+		if (till is { } t)
+		{
+			var tillDatum = t.Date;
+			query = query.Where(t => t.VeckoStart <= tillDatum);
+		}
+
+		var rader = await query
+			.OrderByDescending(t => t.VeckoStart)
+			.ThenBy(t => t.Id)
+			.Select(t => MapToDto(t))
+			.ToListAsync(cancellationToken);
+
+		return Ok(rader);
+	}
+
+	/// <summary>
+	/// Admin: uppdaterar en tidrapportrad (timmar, ersättningsform, trakt, kommentar).
+	/// </summary>
+	[HttpPut("{id:int}")]
+	public async Task<IActionResult> Uppdatera(
+		int id,
+		[FromBody] TidrapportInputDto dto,
+		CancellationToken cancellationToken)
+	{
+		if (dto.AntalTimmar <= 0)
+		{
+			return BadRequest("Antal timmar måste vara större än 0.");
+		}
+
+		var tidrapport = await _db.Tidrapporter
+			.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
+		if (tidrapport is null)
+		{
+			return NotFound();
+		}
+
+		tidrapport.AntalTimmar = dto.AntalTimmar;
+		tidrapport.ErsattningsTyp = dto.ErsattningsTyp;
+		tidrapport.TraktId = dto.TraktId;
+		tidrapport.Kommentar = string.IsNullOrWhiteSpace(dto.Kommentar) ? null : dto.Kommentar.Trim();
+
+		await _db.SaveChangesAsync(cancellationToken);
+
+		await _db.Entry(tidrapport).Reference(t => t.Trakt).LoadAsync(cancellationToken);
+
+		return Ok(MapToDto(tidrapport));
+	}
+
+	/// <summary>
+	/// Admin: tar bort en tidrapportrad oavsett ägare.
+	/// </summary>
+	[HttpDelete("{id:int}/admin")]
+	public async Task<IActionResult> TaBortAdmin(
+		int id,
+		CancellationToken cancellationToken)
+	{
+		var tidrapport = await _db.Tidrapporter
+			.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
+		if (tidrapport is null)
+		{
+			return NotFound();
+		}
+
+		_db.Tidrapporter.Remove(tidrapport);
+		await _db.SaveChangesAsync(cancellationToken);
+
+		return NoContent();
+	}
+
 	private static TidrapportDto MapToDto(Tidrapport t) => new()
 	{
 		Id = t.Id,

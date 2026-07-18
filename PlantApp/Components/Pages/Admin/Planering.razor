@@ -158,6 +158,90 @@
                     </table>
                 }
             </div>
+
+            <div class="planering-bemanning">
+                <div class="planering-tabell__rubrik">Bemanning &amp; tidsplan</div>
+                <p class="planering-tabell__hjalp">
+                    Uppskatta hur många plantörer som behövs och ungefär hur lång tid planteringen
+                    tar för de valda trakterna. Värdena är preliminära och sparas inte.
+                </p>
+
+                @if (_valda.Count == 0 || TotaltBehov() == 0)
+                {
+                    <div class="planering-melding">
+                        Välj en eller flera trakter med satt mål ovan för att räkna på bemanning.
+                    </div>
+                }
+                else
+                {
+                    <div class="bemanning-installningar">
+                        <label class="bemanning-falt">
+                            <span class="bemanning-falt__etikett">Snitt plantor / plantör / dag</span>
+                            <input type="number" min="1" step="50" class="plan-input plan-input--bred"
+                                   @bind="_snittPerPlantorPerDag" />
+                        </label>
+                        <label class="bemanning-falt">
+                            <span class="bemanning-falt__etikett">Antal plantörer</span>
+                            <input type="number" min="1" class="plan-input plan-input--bred"
+                                   @bind="_antalPlantorer" />
+                        </label>
+                        <label class="bemanning-falt">
+                            <span class="bemanning-falt__etikett">Önskad säsongslängd (arbetsdagar)</span>
+                            <input type="number" min="1" class="plan-input plan-input--bred"
+                                   @bind="_onskadSasongsdagar" />
+                        </label>
+                        <label class="bemanning-falt">
+                            <span class="bemanning-falt__etikett">Startdatum</span>
+                            <input type="date" class="plan-input plan-input--bred" @bind="_startdatum" />
+                        </label>
+                        <label class="bemanning-falt bemanning-falt--checkbox">
+                            <input type="checkbox" @bind="_raknaBortHelger" />
+                            <span class="bemanning-falt__etikett">Räkna bort helger</span>
+                        </label>
+                    </div>
+
+                    @if (RekommenderadePlantorer() > 0)
+                    {
+                        <div class="bemanning-tips">
+                            <span class="bemanning-tips__ikon" aria-hidden="true">💡</span>
+                            <div class="bemanning-tips__text">
+                                För att bli klar på <strong>@_onskadSasongsdagar arbetsdagar</strong>
+                                (@ArbetsveckorText()) behövs
+                                <strong>@RekommenderadePlantorer() plantörer</strong>
+                                med @_snittPerPlantorPerDag.ToString("N0", CultureInfo.CurrentCulture)
+                                plantor per plantör och dag.
+                            </div>
+                            <button type="button" class="knapp-lank"
+                                    @onclick="AnvandRekommenderadBemanning">
+                                Använd @RekommenderadePlantorer()
+                            </button>
+                        </div>
+                    }
+
+                    <div class="planering-summering">
+                        <div class="plan-kort">
+                            <span class="plan-kort__ikon" aria-hidden="true">📐</span>
+                            <div class="plan-kort__varde">@TotalHektar().ToString("N1", CultureInfo.CurrentCulture)</div>
+                            <div class="plan-kort__etikett">Hektar totalt</div>
+                        </div>
+                        <div class="plan-kort">
+                            <span class="plan-kort__ikon" aria-hidden="true">🌱</span>
+                            <div class="plan-kort__varde">@PlantorPerDag().ToString("N0", CultureInfo.CurrentCulture)</div>
+                            <div class="plan-kort__etikett">Plantor / dag</div>
+                        </div>
+                        <div class="plan-kort">
+                            <span class="plan-kort__ikon" aria-hidden="true">📅</span>
+                            <div class="plan-kort__varde">@Arbetsdagar().ToString("N0", CultureInfo.CurrentCulture)</div>
+                            <div class="plan-kort__etikett">Arbetsdagar</div>
+                        </div>
+                        <div class="plan-kort">
+                            <span class="plan-kort__ikon" aria-hidden="true">🏁</span>
+                            <div class="plan-kort__varde">@(Slutdatum()?.ToString("yyyy-MM-dd") ?? "–")</div>
+                            <div class="plan-kort__etikett">Ungefärligt slutdatum</div>
+                        </div>
+                    </div>
+                }
+            </div>
         }
     </div>
 </div>
@@ -182,6 +266,13 @@
 
     private IJSObjectReference? _module;
     private bool _exporterar;
+
+    // Bemanning & tidsplan (preliminärt, sparas inte).
+    private int _snittPerPlantorPerDag = 2000;
+    private int _antalPlantorer = 10;
+    private int _onskadSasongsdagar = 20;
+    private DateTime _startdatum = DateTime.Today;
+    private bool _raknaBortHelger = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -292,6 +383,87 @@
 
     private int TotaltPallar() => _config.Sum(c =>
         BeraknaPallar(BeraknaKartonger(HamtaBehov(c.Tradsort), c.PlantorPerKartong), c.KartongerPerPall));
+
+    // ---- Bemanning & tidsplan ----
+
+    // Total areal (hektar) över de valda trakterna.
+    private double TotalHektar() => _statistik is null
+        ? 0
+        : _statistik.Where(t => _valda.Contains(t.TraktId)).Sum(t => t.TotalAreal);
+
+    // Hur många plantor hela laget sätter per arbetsdag.
+    private int PlantorPerDag() => Math.Max(0, _antalPlantorer) * Math.Max(0, _snittPerPlantorPerDag);
+
+    // Antal arbetsdagar för att sätta hela behovet med nuvarande bemanning.
+    private int Arbetsdagar()
+    {
+        var perDag = PlantorPerDag();
+        var total = TotaltBehov();
+        return perDag > 0 && total > 0 ? (int)Math.Ceiling((double)total / perDag) : 0;
+    }
+
+    // Ungefärligt slutdatum utifrån startdatum och antal arbetsdagar. Hoppar över
+    // helger när "räkna bort helger" är valt. Returnerar null om inget kan beräknas.
+    private DateTime? Slutdatum()
+    {
+        var dagar = Arbetsdagar();
+        if (dagar <= 0)
+        {
+            return null;
+        }
+
+        var datum = _startdatum;
+        var kvar = dagar;
+        while (true)
+        {
+            var arbetsdag = !_raknaBortHelger
+                || (datum.DayOfWeek != DayOfWeek.Saturday && datum.DayOfWeek != DayOfWeek.Sunday);
+
+            if (arbetsdag)
+            {
+                kvar--;
+                if (kvar == 0)
+                {
+                    return datum;
+                }
+            }
+
+            datum = datum.AddDays(1);
+        }
+    }
+
+    // Exakt antal plantörer som krävs för att hinna med hela behovet inom den
+    // önskade säsongslängden (arbetsdagar). Avrundas uppåt eftersom man inte kan
+    // bemanna med delar av en plantör.
+    private int RekommenderadePlantorer()
+    {
+        var total = TotaltBehov();
+        return total > 0 && _snittPerPlantorPerDag > 0 && _onskadSasongsdagar > 0
+            ? (int)Math.Ceiling((double)total / (_onskadSasongsdagar * (double)_snittPerPlantorPerDag))
+            : 0;
+    }
+
+    // Fyller i den rekommenderade bemanningen i "Antal plantörer" så resultatkorten
+    // (arbetsdagar, slutdatum) uppdateras utifrån förslaget.
+    private void AnvandRekommenderadBemanning()
+    {
+        var rek = RekommenderadePlantorer();
+        if (rek > 0)
+        {
+            _antalPlantorer = rek;
+        }
+    }
+
+    // Beskriver den önskade säsongslängden i hela/ungefärliga arbetsveckor (5 dagar/vecka).
+    private string ArbetsveckorText()
+    {
+        var veckor = _onskadSasongsdagar / 5.0;
+        return veckor < 1
+            ? "under en arbetsvecka"
+            : $"ca {veckor.ToString("0.#", CultureInfo.CurrentCulture)} arbetsveckor";
+    }
+
+    // ---- Bemanning & tidsplan slut ----
 
     // Bygger en xlsx (med flera flikar) av planeringen och laddar ner den via JS-interop.
     private async Task ExporteraTillExcel()
@@ -442,6 +614,7 @@
         public int TraktId { get; set; }
         public string Namn { get; set; } = "";
         public int AntalDelomraden { get; set; }
+        public double TotalAreal { get; set; }
         public List<MalPerTradsort> MalPerTradsort { get; set; } = new();
     }
 

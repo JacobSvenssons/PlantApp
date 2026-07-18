@@ -422,6 +422,21 @@ public class TraktController : ControllerBase
             return BadRequest("Ange antal plantor innan området markeras som klart.");
         }
 
+        // Ägarskapskontroll: en plantsättare får inte ändra på en ruta som är tilldelad
+        // en annan plantör. Admin och plantbas har alltid rätt att ändra.
+        var kanTilldela = User.IsInRole(DemoUserStore.RoleAdmin)
+            || User.IsInRole(DemoUserStore.RolePlantbas);
+        if (!kanTilldela && User.IsInRole(DemoUserStore.RolePlantsattare))
+        {
+            var currentUser = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var agare = delOmrade.TilldeladAnvandare;
+            if (!string.IsNullOrWhiteSpace(agare)
+                && !string.Equals(agare, currentUser, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
+            }
+        }
+
         delOmrade.Status = dto.Status;
         delOmrade.AntalPlantor = dto.AntalPlantor;
         delOmrade.Tradsort = Normalisera(dto.Tradsort);
@@ -461,8 +476,61 @@ public class TraktController : ControllerBase
     }
 
     /// <summary>
-    /// Returnerar traktens standardträdsort (för kartvyns admin-toolbar).
+    /// Returnerar hur många plantor en plantsättare registrerat under en given vecka
+    /// (måndag–söndag), grupperat per trakt. Används i tidrapporten som underlag.
     /// </summary>
+    [HttpGet("plantor")]
+    public async Task<IActionResult> GetPlantorForVecka(
+        [FromQuery] string anvandare,
+        [FromQuery] DateTime vecka,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(anvandare))
+        {
+            return BadRequest("Användare måste anges.");
+        }
+
+        var veckoStart = vecka.Date;
+        var veckoSlut = veckoStart.AddDays(7);
+
+        // Säsongen räknas som innevarande kalenderår fram till veckans slut.
+        var sasongStart = new DateTime(veckoStart.Year, 1, 1);
+
+        var sasongDelomraden = await _db.DelOmraden
+            .AsNoTracking()
+            .Include(d => d.Trakt)
+            .Where(d => d.AntalPlantor != null && d.AntalPlantor > 0
+                        && d.TilldeladAnvandare == anvandare
+                        && d.RegistreradDatum != null
+                        && d.RegistreradDatum >= sasongStart
+                        && d.RegistreradDatum < veckoSlut)
+            .ToListAsync(cancellationToken);
+
+        var delomraden = sasongDelomraden
+            .Where(d => d.RegistreradDatum >= veckoStart)
+            .ToList();
+
+        var perTrakt = delomraden
+            .GroupBy(d => new { d.TraktId, d.Trakt.Namn })
+            .OrderBy(g => g.Key.Namn)
+            .Select(g => new PlantorPerTraktDto
+            {
+                TraktId = g.Key.TraktId,
+                TraktNamn = g.Key.Namn,
+                AntalPlantor = g.Sum(d => d.AntalPlantor ?? 0)
+            })
+            .ToList();
+
+        var resultat = new PlantorVeckaDto
+        {
+            TotaltAntalPlantor = perTrakt.Sum(t => t.AntalPlantor),
+            SasongAntalPlantor = sasongDelomraden.Sum(d => d.AntalPlantor ?? 0),
+            SasongAr = veckoStart.Year,
+            PerTrakt = perTrakt
+        };
+
+        return Ok(resultat);
+    }
     [HttpGet("{id:int}/tradsort")]
     public async Task<IActionResult> GetTraktTradsort(int id, CancellationToken cancellationToken)
     {

@@ -127,6 +127,13 @@
 				<button type="button" class="rapport-panel__stang" title="Stäng" @onclick="ClosePanel">&times;</button>
 			</div>
 
+			@if (!KanRedigeraRuta)
+			{
+				<div class="rapport-panel__las">
+					🔒 Rutan är tilldelad @DemoUserStore.GetDisplayName(_tilldeladAnvandare) och kan bara ändras av den plantören.
+				</div>
+			}
+
 			<div class="rapport-panel__grid">
 				<div class="falt">
 					<label>Areal</label>
@@ -165,12 +172,12 @@
 				<label>Status</label>
 				<div class="status-checklista">
 					<label class="checklista-rad">
-						<input type="checkbox" checked="@_paborjad" @onchange="OnPaborjadChanged" />
+						<input type="checkbox" checked="@_paborjad" @onchange="OnPaborjadChanged" disabled="@(!KanRedigeraRuta)" />
 						<span class="checklista-rad__prick checklista-rad__prick--paborjad"></span>
 						<span class="checklista-rad__text">Påbörja område</span>
 					</label>
 					<label class="checklista-rad">
-						<input type="checkbox" checked="@_klar" @onchange="OnKlarChanged" />
+						<input type="checkbox" checked="@_klar" @onchange="OnKlarChanged" disabled="@(!KanRedigeraRuta)" />
 						<span class="checklista-rad__prick checklista-rad__prick--klar"></span>
 						<span class="checklista-rad__text">Markera som klar</span>
 					</label>
@@ -181,7 +188,7 @@
 				<div class="falt">
 					<label for="antal-plantor">Antal plantor</label>
 					<input id="antal-plantor" type="number" min="0" class="falt__input"
-						   @bind="_antalPlantor" @bind:event="oninput" />
+						   @bind="_antalPlantor" @bind:event="oninput" disabled="@(!KanRedigeraRuta)" />
 				</div>
 				<div class="falt">
 					<label for="ruta-mal">Mål plantor/ha</label>
@@ -229,13 +236,13 @@
 				<label for="ruta-kommentar">Avvikelse / kommentar</label>
 				<textarea id="ruta-kommentar" class="falt__input falt__textarea" rows="3"
 						  placeholder="Notera t.ex. hinder i terrängen eller avvikelser"
-						  @bind="_kommentar"></textarea>
+						  @bind="_kommentar" disabled="@(!KanRedigeraRuta)"></textarea>
 			</div>
 
 			<div class="falt">
 				<div class="provytor__rubrik">
 					<label>Provytor (@_provytor.Count)</label>
-					<button type="button" class="knapp knapp--lank" @onclick="AddProvyta">+ Lägg till provyta</button>
+					<button type="button" class="knapp knapp--lank" @onclick="AddProvyta" disabled="@(!KanRedigeraRuta)">+ Lägg till provyta</button>
 				</div>
 
 				@if (_provytor.Count == 0)
@@ -283,7 +290,7 @@
 
 			<div class="rapport-panel__actions">
 				<button type="button" class="knapp knapp--sekundar" @onclick="ClosePanel" disabled="@_saving">Avbryt</button>
-				<button type="button" class="knapp knapp--primar" @onclick="SaveAsync" disabled="@_saving">
+				<button type="button" class="knapp knapp--primar" @onclick="SaveAsync" disabled="@(_saving || !KanRedigeraRuta)">
 					@(_saving ? "Sparar…" : "Spara")
 				</button>
 			</div>
@@ -327,6 +334,8 @@
 
 	// Roll- och trakt-nivå-tillstånd.
 	private bool _isAdmin;
+	private bool _isPlantsattare;
+	private string? _currentUser;
 	private bool _kanTilldela;
 	private bool _kanAndraTradsort;
 	private bool _kanAndraMal;
@@ -349,6 +358,8 @@
 		{
 			var user = (await AuthState).User;
 			_isAdmin = user.IsInRole(DemoUserStore.RoleAdmin);
+			_isPlantsattare = user.IsInRole(DemoUserStore.RolePlantsattare);
+			_currentUser = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 			// Admin och plantbas får tilldela rutor till fältpersonal.
 			_kanTilldela = _isAdmin || user.IsInRole(DemoUserStore.RolePlantbas);
 			// Trädslag sätts av admin/plantbas; plantsättare ser det bara.
@@ -495,6 +506,22 @@
 		{
 			// Bockar man ur "Påbörjad" kan området inte vara "Klart".
 			_klar = false;
+
+			// När en plantsättare ångrar sin egen påbörjade ruta släpps tilldelningen
+			// så att rutan låses upp och kan "tas" av en annan plantör.
+			if (_isPlantsattare
+				&& !string.IsNullOrWhiteSpace(_tilldeladAnvandare)
+				&& string.Equals(_tilldeladAnvandare, _currentUser, StringComparison.OrdinalIgnoreCase))
+			{
+				_tilldeladAnvandare = null;
+			}
+		}
+		else if (_isPlantsattare && string.IsNullOrWhiteSpace(_tilldeladAnvandare)
+				 && !string.IsNullOrWhiteSpace(_currentUser))
+		{
+			// När en plantsättare påbörjar en oanvänd ruta tilldelas den automatiskt
+			// den inloggade användaren.
+			_tilldeladAnvandare = _currentUser;
 		}
 	}
 
@@ -505,6 +532,11 @@
 		{
 			// "Klar" innebär automatiskt "Påbörjad".
 			_paborjad = true;
+			if (_isPlantsattare && string.IsNullOrWhiteSpace(_tilldeladAnvandare)
+				&& !string.IsNullOrWhiteSpace(_currentUser))
+			{
+				_tilldeladAnvandare = _currentUser;
+			}
 		}
 	}
 
@@ -512,6 +544,16 @@
 		_klar ? DelOmradeStatus.Klar
 		: _paborjad ? DelOmradeStatus.Paborjad
 		: DelOmradeStatus.EjPaborjad;
+
+	// Sant om rutan är tilldelad en annan plantsättare än den inloggade.
+	// Används för att låsa/hindra att man ändrar på någon annans ruta.
+	private bool AgsAvAnnan =>
+		!string.IsNullOrWhiteSpace(_tilldeladAnvandare)
+		&& !string.Equals(_tilldeladAnvandare, _currentUser, StringComparison.OrdinalIgnoreCase);
+
+	// Plantsättare får bara redigera rutor som inte tillhör någon annan plantsättare.
+	// Admin/plantbas (de som får tilldela) har alltid redigeringsrätt.
+	private bool KanRedigeraRuta => _kanTilldela || !(_isPlantsattare && AgsAvAnnan);
 
 	// Sätter traktens standardträdsort (admin-toolbaren). Sparas direkt mot API:t.
 	private async Task OnTraktTradsortChanged(ChangeEventArgs e)
@@ -800,6 +842,13 @@
 		{
 			_saveError = true;
 			_saveMessage = "Kunde inte spara: delområdet saknar giltigt id.";
+			return;
+		}
+
+		if (!KanRedigeraRuta)
+		{
+			_saveError = true;
+			_saveMessage = "Rutan är tilldelad en annan plantör och kan inte ändras.";
 			return;
 		}
 

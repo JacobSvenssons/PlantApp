@@ -5,7 +5,7 @@
 @using PlantApp.Dtos
 @using PlantApp.Models
 @using PlantApp.Services
-@attribute [Authorize(Roles = "Plantsattare,Admin")]
+@attribute [Authorize(Roles = "Plantsattare")]
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
 
@@ -26,14 +26,59 @@
             <div class="tid-melding tid-melding--fel">@_error</div>
         }
 
+        @if (_varning is not null)
+        {
+            <div class="tid-melding tid-melding--varning">
+                <span>@_varning</span>
+                <div class="tid-melding__knappar">
+                    <button type="button" class="knapp-lank" @onclick="AvbrytVarning" disabled="@_sparar">Avbryt</button>
+                    <button type="button" class="btn-pill btn-pill--liten" @onclick="SparaAnda" disabled="@_sparar">
+                        @(_sparar ? "Sparar…" : "Spara ändå")
+                    </button>
+                </div>
+            </div>
+        }
+
         <div class="tid-vecka">
-            <button type="button" class="knapp-lank" @onclick="() => BytVecka(-1)">◀ Föregående</button>
+            <button type="button" class="tid-vecka__nav" @onclick="() => BytVecka(-1)" aria-label="Föregående vecka">
+                <span class="tid-vecka__nav-ikon" aria-hidden="true">‹</span>
+                <span class="tid-vecka__nav-text">Föregående</span>
+            </button>
             <div class="tid-vecka__etikett">
                 Vecka @IsoVecka(_veckoStart)
                 <span class="tid-vecka__datum">@_veckoStart.ToString("d MMM", CultureInfo.CurrentCulture) – @_veckoStart.AddDays(6).ToString("d MMM", CultureInfo.CurrentCulture)</span>
             </div>
-            <button type="button" class="knapp-lank" @onclick="() => BytVecka(1)">Nästa ▶</button>
+            <button type="button" class="tid-vecka__nav" @onclick="() => BytVecka(1)" aria-label="Nästa vecka">
+                <span class="tid-vecka__nav-text">Nästa</span>
+                <span class="tid-vecka__nav-ikon" aria-hidden="true">›</span>
+            </button>
         </div>
+
+        @if (_plantor is not null && (_plantor.TotaltAntalPlantor > 0 || _plantor.SasongAntalPlantor > 0))
+        {
+            <div class="tid-plantor">
+                <div class="tid-plantor__topp">
+                    <span class="tid-plantor__ikon" aria-hidden="true">🌲</span>
+                    <div>
+                        <span class="tid-plantor__label">Plantor satta denna vecka</span>
+                        <span class="tid-plantor__total">@_plantor.TotaltAntalPlantor.ToString("#,0", CultureInfo.CurrentCulture) st</span>
+                    </div>
+                    <div class="tid-plantor__sasong">
+                        <span class="tid-plantor__label">Säsongen @_plantor.SasongAr</span>
+                        <span class="tid-plantor__total">@_plantor.SasongAntalPlantor.ToString("#,0", CultureInfo.CurrentCulture) st</span>
+                    </div>
+                </div>
+                @if (_plantor.PerTrakt.Count > 0)
+                {
+                    <div class="tid-plantor__trakter">
+                        @foreach (var t in _plantor.PerTrakt)
+                        {
+                            <span class="tid-chip">@t.TraktNamn: @t.AntalPlantor.ToString("#,0", CultureInfo.CurrentCulture) st</span>
+                        }
+                    </div>
+                }
+            </div>
+        }
 
         <form class="tid-form" @onsubmit="LaggTill" @onsubmit:preventDefault="true">
             <div class="tid-form__falt">
@@ -130,9 +175,14 @@
 @code {
     private static readonly ErsattningsTyp[] AllaTyper = Enum.GetValues<ErsattningsTyp>();
 
+    // Gräns för hur många timmar per vecka som anses "normalt" innan en varning visas.
+    private const double VeckoTimGrans = 40;
+
     private List<TidrapportDto>? _rader;
     private List<TraktListItem>? _trakter;
+    private PlantorVeckaDto? _plantor;
     private string? _error;
+    private string? _varning;
 
     private string? _anvandare;
     private DateTime _veckoStart = MandagFor(DateTime.Today);
@@ -150,7 +200,9 @@
     {
         if (AuthState is not null)
         {
-            _anvandare = (await AuthState).User.Identity?.Name;
+            var user = (await AuthState).User;
+            _anvandare = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                         ?? user.Identity?.Name;
         }
 
         await LaddaStandardTyp();
@@ -212,10 +264,35 @@
             _error = $"Kunde inte hämta tidrapporter: {ex.Message}";
             _rader = new();
         }
+
+        await LaddaPlantor();
+    }
+
+    private async Task LaddaPlantor()
+    {
+        if (string.IsNullOrWhiteSpace(_anvandare))
+        {
+            _plantor = null;
+            return;
+        }
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var url = $"{NavigationManager.BaseUri}api/trakt/plantor" +
+                      $"?anvandare={Uri.EscapeDataString(_anvandare)}&vecka={_veckoStart:yyyy-MM-dd}";
+            _plantor = await client.GetFromJsonAsync<PlantorVeckaDto>(url);
+        }
+        catch
+        {
+            // Plantsammanställningen är ett underlag – låt sidan fungera även om den fallerar.
+            _plantor = null;
+        }
     }
 
     private async Task BytVecka(int riktning)
     {
+        _varning = null;
         _veckoStart = _veckoStart.AddDays(7 * riktning);
         await LaddaVecka();
     }
@@ -233,8 +310,41 @@
             return;
         }
 
+        _error = null;
+
+        // Varna om veckans totala timmar (befintliga + de nya) överstiger gränsen.
+        var totalEfter = (_rader?.Sum(r => r.AntalTimmar) ?? 0) + _nyTimmar;
+        if (_varning is null && totalEfter > VeckoTimGrans)
+        {
+            _varning = $"Veckan får då {totalEfter.ToString("0.##", CultureInfo.CurrentCulture)} h " +
+                       $"totalt, vilket är mer än {VeckoTimGrans:0} h. Vill du spara ändå?";
+            return;
+        }
+
+        await SparaRadAsync();
+    }
+
+    private async Task SparaAnda()
+    {
+        _varning = null;
+        await SparaRadAsync();
+    }
+
+    private void AvbrytVarning()
+    {
+        _varning = null;
+    }
+
+    private async Task SparaRadAsync()
+    {
+        if (_sparar || string.IsNullOrWhiteSpace(_anvandare))
+        {
+            return;
+        }
+
         _sparar = true;
         _error = null;
+        _varning = null;
 
         try
         {
@@ -255,6 +365,8 @@
 
             if (response.IsSuccessStatusCode)
             {
+                // Nollställ formuläret så nästa rad börjar från ett tomt läge.
+                _nyTimmar = 0;
                 _nyKommentar = null;
                 await LaddaVecka();
             }

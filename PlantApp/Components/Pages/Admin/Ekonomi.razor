@@ -9,6 +9,7 @@
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
+@inject DemoUserStore DemoUserStore
 @implements IAsyncDisposable
 
 <PageTitle>PlantApp – Ekonomi</PageTitle>
@@ -131,9 +132,9 @@
                         <tbody>
                             @foreach (var person in _personer)
                             {
-                                var arVald = _valdPerson == person.Namn;
+                                var arVald = _valdPerson == person.Anvandare;
                                 <tr class="ekonomi-person-rad @(arVald ? "ekonomi-person-rad--vald" : "")"
-                                    @onclick="() => ValjPerson(person.Namn)">
+                                    @onclick="() => ValjPerson(person.Anvandare)">
                                     <td>
                                         <span class="ekonomi-person-rad__pil" aria-hidden="true">@(arVald ? "▼" : "▶")</span>
                                         @person.Namn
@@ -183,6 +184,92 @@
                                                         <span class="tid-chip">Delackord: @person.TimmarDelackord.ToString("0.##", CultureInfo.CurrentCulture) h</span>
                                                         <span class="tid-chip">Timpenning: @person.TimmarTimpenning.ToString("0.##", CultureInfo.CurrentCulture) h</span>
                                                     </div>
+
+                                                    @if (_tidError is not null)
+                                                    {
+                                                        <div class="ekonomi-melding ekonomi-melding--fel">@_tidError</div>
+                                                    }
+
+                                                    @if (_tidRader is null)
+                                                    {
+                                                        <p class="ekonomi-hjalp">Laddar tidrapporter…</p>
+                                                    }
+                                                    else if (_tidRader.Count == 0)
+                                                    {
+                                                        <p class="ekonomi-hjalp">Inga enskilda rader i vald period.</p>
+                                                    }
+                                                    else
+                                                    {
+                                                        <table class="tabell tabell--inbaddad">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Vecka</th>
+                                                                    <th class="tabell__num">Timmar</th>
+                                                                    <th>Ersättningsform</th>
+                                                                    <th>Trakt</th>
+                                                                    <th>Kommentar</th>
+                                                                    <th></th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                @foreach (var rad in _tidRader)
+                                                                {
+                                                                    <tr>
+                                                                        @if (_redigerarId == rad.Id)
+                                                                        {
+                                                                            <td>v.@IsoVecka(rad.VeckoStart)</td>
+                                                                            <td class="tabell__num">
+                                                                                <input type="number" min="0.5" step="0.5"
+                                                                                       class="ekonomi-input ekonomi-input--sm"
+                                                                                       @bind="_redigerarTimmar" />
+                                                                            </td>
+                                                                            <td>
+                                                                                <select class="ekonomi-select ekonomi-select--sm" @bind="_redigerarTyp">
+                                                                                    @foreach (var typ in AllaTyper)
+                                                                                    {
+                                                                                        <option value="@typ">@TypText(typ)</option>
+                                                                                    }
+                                                                                </select>
+                                                                            </td>
+                                                                            <td>
+                                                                                <select class="ekonomi-select ekonomi-select--sm" @bind="_redigerarTraktId">
+                                                                                    <option value="">– Ingen –</option>
+                                                                                    @if (_trakter is not null)
+                                                                                    {
+                                                                                        @foreach (var t in _trakter)
+                                                                                        {
+                                                                                            <option value="@t.Id">@t.Namn</option>
+                                                                                        }
+                                                                                    }
+                                                                                </select>
+                                                                            </td>
+                                                                            <td>
+                                                                                <input type="text" maxlength="1000"
+                                                                                       class="ekonomi-input ekonomi-input--sm"
+                                                                                       @bind="_redigerarKommentar" />
+                                                                            </td>
+                                                                            <td class="tabell__num ekonomi-rad-knappar">
+                                                                                <button type="button" class="knapp-lank" @onclick="() => SparaRad(rad.Id)" disabled="@_tidSparar">Spara</button>
+                                                                                <button type="button" class="knapp-lank" @onclick="AvbrytRedigera" disabled="@_tidSparar">Avbryt</button>
+                                                                            </td>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <td>v.@IsoVecka(rad.VeckoStart)</td>
+                                                                            <td class="tabell__num">@rad.AntalTimmar.ToString("0.##", CultureInfo.CurrentCulture)</td>
+                                                                            <td>@TypText(rad.ErsattningsTyp)</td>
+                                                                            <td>@(rad.TraktNamn ?? "–")</td>
+                                                                            <td>@(string.IsNullOrWhiteSpace(rad.Kommentar) ? "–" : rad.Kommentar)</td>
+                                                                            <td class="tabell__num ekonomi-rad-knappar">
+                                                                                <button type="button" class="knapp-lank" @onclick="() => BorjaRedigera(rad)" disabled="@_tidSparar">Redigera</button>
+                                                                                <button type="button" class="knapp-lank knapp-lank--fara" @onclick="() => TaBortRad(rad.Id)" disabled="@_tidSparar">Ta bort</button>
+                                                                            </td>
+                                                                        }
+                                                                    </tr>
+                                                                }
+                                                            </tbody>
+                                                        </table>
+                                                    }
                                                 }
                                             </div>
                                         </td>
@@ -208,19 +295,45 @@
     private string? _loadError;
 
     private ErsattningsTyp _standardTyp = ErsattningsTyp.HelAckord;
-    private DateTime? _fran;
-    private DateTime? _till;
+    private DateTime? _fran = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime? _till = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(1).AddDays(-1);
 
     private bool _laddar;
     private bool _sparar;
     private bool _exporterar;
+
+    // Admin-redigering av tidrapporter för vald person.
+    private List<TidrapportDto>? _tidRader;
+    private List<TraktListItem>? _trakter;
+    private string? _tidError;
+    private bool _tidSparar;
+    private int? _redigerarId;
+    private double _redigerarTimmar;
+    private ErsattningsTyp _redigerarTyp;
+    private string? _redigerarTraktId;
+    private string? _redigerarKommentar;
 
     private IJSObjectReference? _module;
 
     protected override async Task OnInitializedAsync()
     {
         await LaddaInstallningAsync();
+        await LaddaTrakter();
         await LaddaSammanstallning();
+    }
+
+    private async Task LaddaTrakter()
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            _trakter = await client.GetFromJsonAsync<List<TraktListItem>>(
+                $"{NavigationManager.BaseUri}api/trakt");
+        }
+        catch
+        {
+            _trakter = new();
+        }
     }
 
     private async Task LaddaInstallningAsync()
@@ -299,7 +412,8 @@
             .GroupBy(r => r.Plantsattare)
             .Select(g => new PersonSammanstallning
             {
-                Namn = g.Key,
+                Anvandare = g.Key,
+                Namn = DemoUserStore.GetDisplayName(g.Key),
                 TotaltAntalPlantor = g.Sum(r => r.AntalPlantor),
                 AntalTrakter = g.Select(r => r.TraktId).Distinct().Count(),
                 Trakter = g
@@ -316,14 +430,18 @@
                     .OrderBy(t => t.TraktNamn)
                     .ToList()
             })
-            .ToDictionary(p => p.Namn);
+            .ToDictionary(p => p.Anvandare);
 
         // Slå ihop timmar per person (kan finnas personer som bara rapporterat tid).
         foreach (var tim in _timmar)
         {
             if (!personer.TryGetValue(tim.Anvandare, out var person))
             {
-                person = new PersonSammanstallning { Namn = tim.Anvandare };
+                person = new PersonSammanstallning
+                {
+                    Anvandare = tim.Anvandare,
+                    Namn = DemoUserStore.GetDisplayName(tim.Anvandare)
+                };
                 personer[tim.Anvandare] = person;
             }
 
@@ -338,16 +456,172 @@
             .ThenBy(p => p.Namn)
             .ToList();
 
-        if (_valdPerson is not null && _personer.All(p => p.Namn != _valdPerson))
+        if (_valdPerson is not null && _personer.All(p => p.Anvandare != _valdPerson))
         {
             _valdPerson = null;
         }
     }
 
-    private void ValjPerson(string namn)
+    private async Task ValjPerson(string namn)
     {
-        _valdPerson = _valdPerson == namn ? null : namn;
+        if (_valdPerson == namn)
+        {
+            _valdPerson = null;
+            _tidRader = null;
+            AvbrytRedigera();
+            return;
+        }
+
+        _valdPerson = namn;
+        await LaddaTidRader(namn);
     }
+
+    private async Task LaddaTidRader(string namn)
+    {
+        AvbrytRedigera();
+        _tidRader = null;
+        _tidError = null;
+
+        try
+        {
+            var query = new List<string> { $"anvandare={Uri.EscapeDataString(namn)}" };
+            if (_fran is { } f)
+            {
+                query.Add($"fran={f:yyyy-MM-dd}");
+            }
+            if (_till is { } t)
+            {
+                query.Add($"till={t:yyyy-MM-dd}");
+            }
+
+            var url = $"{NavigationManager.BaseUri}api/tidrapport/rader?" + string.Join("&", query);
+            var client = HttpClientFactory.CreateClient();
+            _tidRader = await client.GetFromJsonAsync<List<TidrapportDto>>(url) ?? new();
+        }
+        catch (Exception ex)
+        {
+            _tidError = $"Kunde inte hämta tidrapporter: {ex.Message}";
+            _tidRader = new();
+        }
+    }
+
+    private void BorjaRedigera(TidrapportDto rad)
+    {
+        _redigerarId = rad.Id;
+        _redigerarTimmar = rad.AntalTimmar;
+        _redigerarTyp = rad.ErsattningsTyp;
+        _redigerarTraktId = rad.TraktId?.ToString();
+        _redigerarKommentar = rad.Kommentar;
+        _tidError = null;
+    }
+
+    private void AvbrytRedigera()
+    {
+        _redigerarId = null;
+        _redigerarTimmar = 0;
+        _redigerarTraktId = null;
+        _redigerarKommentar = null;
+    }
+
+    private async Task SparaRad(int id)
+    {
+        if (_tidSparar)
+        {
+            return;
+        }
+
+        if (_redigerarTimmar <= 0)
+        {
+            _tidError = "Antal timmar måste vara större än 0.";
+            return;
+        }
+
+        _tidSparar = true;
+        _tidError = null;
+
+        try
+        {
+            int? traktId = int.TryParse(_redigerarTraktId, out var tid) ? tid : null;
+            var dto = new TidrapportInputDto
+            {
+                VeckoStart = default,
+                AntalTimmar = _redigerarTimmar,
+                ErsattningsTyp = _redigerarTyp,
+                TraktId = traktId,
+                Kommentar = _redigerarKommentar
+            };
+
+            var client = HttpClientFactory.CreateClient();
+            var response = await client.PutAsJsonAsync(
+                $"{NavigationManager.BaseUri}api/tidrapport/{id}", dto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                AvbrytRedigera();
+                await AktualiseraEfterAndring();
+            }
+            else
+            {
+                _tidError = $"Kunde inte spara (HTTP {(int)response.StatusCode}).";
+            }
+        }
+        catch (Exception ex)
+        {
+            _tidError = $"Fel vid sparande: {ex.Message}";
+        }
+        finally
+        {
+            _tidSparar = false;
+        }
+    }
+
+    private async Task TaBortRad(int id)
+    {
+        if (_tidSparar)
+        {
+            return;
+        }
+
+        _tidSparar = true;
+        _tidError = null;
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var response = await client.DeleteAsync(
+                $"{NavigationManager.BaseUri}api/tidrapport/{id}/admin");
+
+            if (response.IsSuccessStatusCode)
+            {
+                await AktualiseraEfterAndring();
+            }
+            else
+            {
+                _tidError = $"Kunde inte ta bort (HTTP {(int)response.StatusCode}).";
+            }
+        }
+        catch (Exception ex)
+        {
+            _tidError = $"Fel vid borttagning: {ex.Message}";
+        }
+        finally
+        {
+            _tidSparar = false;
+        }
+    }
+
+    // Läser om både aggregaten (kort/kolumner) och de enskilda raderna för vald person.
+    private async Task AktualiseraEfterAndring()
+    {
+        await LaddaSammanstallning();
+        if (_valdPerson is not null)
+        {
+            await LaddaTidRader(_valdPerson);
+        }
+    }
+
+    private static int IsoVecka(DateTime datum) =>
+        System.Globalization.ISOWeek.GetWeekOfYear(datum);
 
     private async Task OnStandardTypChanged(ChangeEventArgs e)
     {
@@ -501,6 +775,9 @@
 
     private sealed class PersonSammanstallning
     {
+        /// <summary>Användarnamn – identitet som används för nyckling och för att ladda tidrapporter.</summary>
+        public string Anvandare { get; set; } = "";
+        /// <summary>Visningsnamn som visas i tabellen.</summary>
         public string Namn { get; set; } = "";
         public int TotaltAntalPlantor { get; set; }
         public int AntalTrakter { get; set; }
@@ -519,5 +796,11 @@
         public string TraktNamn { get; set; } = "";
         public int AntalPlantor { get; set; }
         public string ErsattningsFormer { get; set; } = "";
+    }
+
+    private sealed class TraktListItem
+    {
+        public int Id { get; set; }
+        public string Namn { get; set; } = "";
     }
 }

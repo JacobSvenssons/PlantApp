@@ -99,6 +99,42 @@
     font-size: 0.82rem;
 }
 
+.ekonomi-input--sm {
+    padding: 0.3rem 0.45rem;
+    font-size: 0.82rem;
+    width: 6rem;
+}
+
+.ekonomi-rad-knappar {
+    display: flex;
+    gap: 0.6rem;
+    justify-content: flex-end;
+    white-space: nowrap;
+}
+
+.knapp-lank {
+    border: none;
+    background: transparent;
+    padding: 0;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.knapp-lank:hover:not(:disabled) {
+    text-decoration: underline;
+}
+
+.knapp-lank:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.knapp-lank--fara {
+    color: #b3261e;
+}
+
 /* Periodfilter */
 .ekonomi-filter {
     display: flex;

@@ -52,14 +52,19 @@ public sealed class PersistentAuthenticationStateProvider : AuthenticationStateP
         if (principal.Identity?.IsAuthenticated == true)
         {
             var name = principal.FindFirst(ClaimTypes.Name)?.Value ?? principal.Identity.Name ?? string.Empty;
+            var userName = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? name;
             var roles = principal.FindAll(ClaimTypes.Role).Select(c => c.Value).ToArray();
-            _state.PersistAsJson(PersistenceKey, new UserInfo(name, roles));
+            _state.PersistAsJson(PersistenceKey, new UserInfo(name, userName, roles));
         }
     }
 
     private static ClaimsPrincipal CreatePrincipal(UserInfo userInfo)
     {
-        var claims = new List<Claim> { new(ClaimTypes.Name, userInfo.Name) };
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.Name, userInfo.Name),
+            new(ClaimTypes.NameIdentifier, userInfo.UserName)
+        };
         claims.AddRange(userInfo.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
         var identity = new ClaimsIdentity(claims, AuthenticationType, ClaimTypes.Name, ClaimTypes.Role);
@@ -68,5 +73,5 @@ public sealed class PersistentAuthenticationStateProvider : AuthenticationStateP
 
     public void Dispose() => _subscription?.Dispose();
 
-    private sealed record UserInfo(string Name, string[] Roles);
+    private sealed record UserInfo(string Name, string UserName, string[] Roles);
 }

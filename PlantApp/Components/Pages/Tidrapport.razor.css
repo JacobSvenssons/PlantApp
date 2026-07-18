@@ -57,6 +57,47 @@
     color: var(--color-text-muted);
 }
 
+.tid-vecka__nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--color-text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
+}
+
+.tid-vecka__nav:hover {
+    background: rgba(47, 107, 64, 0.08);
+    border-color: #2f6b40;
+    box-shadow: 0 2px 8px rgba(47, 107, 64, 0.15);
+}
+
+.tid-vecka__nav:active {
+    transform: translateY(1px);
+}
+
+.tid-vecka__nav-ikon {
+    font-size: 1.15rem;
+    line-height: 1;
+    color: #2f6b40;
+}
+
+@media (max-width: 480px) {
+    .tid-vecka__nav-text {
+        display: none;
+    }
+
+    .tid-vecka__nav {
+        padding: 0.45rem 0.65rem;
+    }
+}
+
 .tid-form {
     display: flex;
     flex-wrap: wrap;
@@ -120,6 +161,75 @@
 .tid-melding--fel {
     background: #fbe9e9;
     color: #9b1c1c;
+}
+
+.tid-melding--varning {
+    background: #fff4e5;
+    color: #8a5300;
+    text-align: left;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.tid-melding__knappar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.btn-pill--liten {
+    padding: 0.4rem 0.9rem;
+    font-size: 0.9rem;
+}
+
+.tid-plantor {
+    padding: 1rem 1.1rem;
+    border-radius: 12px;
+    background: rgba(47, 107, 64, 0.06);
+    border: 1px solid rgba(47, 107, 64, 0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.tid-plantor__topp {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.tid-plantor__sasong {
+    margin-left: auto;
+    padding-left: 1rem;
+    border-left: 1px solid rgba(47, 107, 64, 0.2);
+    text-align: right;
+}
+
+.tid-plantor__ikon {
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+.tid-plantor__label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+.tid-plantor__total {
+    display: block;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.tid-plantor__trakter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
 }
 
 @media (max-width: 640px) {

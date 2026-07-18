@@ -418,6 +418,16 @@
     font-size: 0.9rem;
 }
 
+.rapport-panel__las {
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: #fff4e5;
+    color: #8a5300;
+    border: 1px solid #f0d3a0;
+}
+
 .rapport-panel__meddelande--ok {
     background: #e7f6ec;
     color: #166016;

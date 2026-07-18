@@ -81,6 +81,7 @@
 
 		var claims = new List<Claim>
 		{
+			new(ClaimTypes.NameIdentifier, user.UserName),
 			new(ClaimTypes.Name, user.DisplayName),
 			new(ClaimTypes.Role, user.Role)
 		};
