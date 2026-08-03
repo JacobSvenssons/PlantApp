@@ -2,12 +2,25 @@ using MaxRev.Gdal.Core;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using PlantApp.Components;
 using PlantApp.Data;
 using PlantApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Bakom en reverse proxy (t.ex. Ngrok) kommer trafiken in som HTTP mot localhost,
+// medan användaren surfar via https://...ngrok. Utan detta vet appen inte sin
+// riktiga utåtriktade adress/schema, vilket ger felaktiga redirects efter inloggning
+// ("null går inte att nå" i mobilen). Vi litar på X-Forwarded-For/Proto från proxyn.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Ngrok-värdarna är inte kända i förväg – rensa default-listorna så headers accepteras.
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // Initiera GDAL/OGR en gång vid uppstart och registrera alla drivrutiner (inkl. PDF).
 // Krävs innan GeoPdfService kan öppna GeoPDF-filer.
@@ -68,6 +81,10 @@ if (app.Environment.IsDevelopment())
 }
 
 // Configure the HTTP request pipeline.
+// Måste ligga tidigast av allt så att efterföljande middleware ser rätt schema/host
+// från proxyn (Ngrok). Annars blir HTTPS-redirect och cookie-scope fel.
+app.UseForwardedHeaders();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
