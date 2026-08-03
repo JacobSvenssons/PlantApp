@@ -35,6 +35,21 @@
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
             crossorigin=""></script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+
+    <!-- Offline-hjälpare: IndexedDB + delad synk-modul, tillgängliga för Blazor-sidor via JS-interop. -->
+    <script src="js/offline-db.js"></script>
+    <script src="js/offline-sync.js"></script>
+
+    <!-- PWA: registrera service worker för offlinestöd (app-shell + offline-fältyta på /falt). -->
+    <script>
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", function () {
+                navigator.serviceWorker.register("/service-worker.js").catch(function (err) {
+                    console.warn("Service worker kunde inte registreras:", err);
+                });
+            });
+        }
+    </script>
 </body>
 
 </html>

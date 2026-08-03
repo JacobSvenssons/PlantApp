@@ -62,6 +62,8 @@
                     </div>
                     <button type="button" class="provyta-lista__till-karta" title="Öppna traktens planteringskarta"
                             @onclick="OppnaTraktKarta">🌱</button>
+                    <button type="button" class="provyta-lista__till-karta" title="Använd offline (fältläge)"
+                            @onclick="AnvandOffline">📴</button>
                 </div>
 
                 @if (_provytor.Count == 0)
@@ -602,6 +604,11 @@
         {
             NavigationManager.NavigateTo($"/trakt/{_detail.TraktId}");
         }
+    }
+
+    private void AnvandOffline()
+    {
+        NavigationManager.NavigateTo($"/falt/?inv={InventeringId}", forceLoad: true);
     }
 
     private void SetSparStatus(string text, bool autoDoljs = false)

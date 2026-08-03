@@ -15,6 +15,13 @@
 <div class="trakt-karta-page">
 	<div id="trakt-karta" class="trakt-karta"></div>
 
+	<div class="trakt-offline">
+		<button type="button" class="trakt-offline__knapp" @onclick="AnvandOffline"
+				title="Använd offline (fältläge) – planterar och rapporterar utan täckning">
+			📴 Använd offline
+		</button>
+	</div>
+
 	@if (_kanAndraTradsort || _kanAndraMal)
 	{
 		<div class="trakt-toolbar">
@@ -790,6 +797,12 @@
 		{
 			// Icke-kritiskt om kartan inte kan uppdatera markörerna.
 		}
+	}
+
+	// Navigerar till fältläget (offline) för denna trakt.
+	private void AnvandOffline()
+	{
+		NavigationManager.NavigateTo($"/falt/?trakt={TraktId}", forceLoad: true);
 	}
 
 	// Laddar ner traktens karta med markerade provytor som GeoJSON (admin-funktion).

@@ -345,6 +345,29 @@
     background: #ffffff;
 }
 
+.trakt-offline {
+    position: absolute;
+    right: 0.75rem;
+    top: 0.75rem;
+    z-index: 600;
+}
+
+.trakt-offline__knapp {
+    border: 1px solid #1f4d2e;
+    background: #1f4d2e;
+    color: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.trakt-offline__knapp:hover {
+    background: #2e6b41;
+}
+
 /* Provyta-markörer på kartan */
 .provyta-markor {
     background: transparent;

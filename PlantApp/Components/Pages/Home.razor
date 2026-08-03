@@ -5,6 +5,7 @@
 @using PlantApp.Services
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JS
 <PageTitle>PlantApp – Välj trakt</PageTitle>
 
 <div class="start-page">
@@ -19,6 +20,17 @@
                         : "Välj en trakt för att öppna planteringskartan.")
                 </p>
             </div>
+        </div>
+
+        <div class="offline-forbered">
+            <button class="btn-pill btn-pill--sekundar" @onclick="ForberedOffline" disabled="@_forberederOffline">
+                @(_forberederOffline ? "Laddar ner…" : "⬇ Förbered offline")
+            </button>
+            <a class="offline-forbered__lank" href="/falt/">Öppna fältläge →</a>
+            @if (_offlineStatus is not null)
+            {
+                <div class="offline-forbered__status">@_offlineStatus</div>
+            }
         </div>
 
         @if (_kanInventera)
@@ -163,6 +175,9 @@
     private int _selectedTraktId;
     private string? _loadError;
 
+    private bool _forberederOffline;
+    private string? _offlineStatus;
+
     private TraktStatistik? _statistik;
     private bool _laddarStatistik;
 
@@ -179,6 +194,33 @@
 
     [CascadingParameter]
     private Task<AuthenticationState>? AuthState { get; set; }
+
+    private async Task ForberedOffline()
+    {
+        _forberederOffline = true;
+        _offlineStatus = "Laddar ner trakter och inventeringar…";
+        try
+        {
+            var res = await JS.InvokeAsync<ForberedResultat>("PlantAppOffline.forberedAllt");
+            _offlineStatus = $"Klart: {res.Trakter} trakter och {res.Inventeringar} inventeringar nedladdade"
+                + (res.Fel > 0 ? $" ({res.Fel} kunde inte laddas)." : ".");
+        }
+        catch (Exception ex)
+        {
+            _offlineStatus = "Nedladdning misslyckades: " + ex.Message;
+        }
+        finally
+        {
+            _forberederOffline = false;
+        }
+    }
+
+    private sealed class ForberedResultat
+    {
+        public int Trakter { get; set; }
+        public int Inventeringar { get; set; }
+        public int Fel { get; set; }
+    }
 
     protected override async Task OnInitializedAsync()
     {

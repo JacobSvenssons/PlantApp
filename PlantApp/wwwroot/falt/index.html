@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+    <title>Fält (offline) · Skogsvård</title>
+
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#1f4d2e" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin="" />
+
+    <style>
+        :root {
+            --gron: #1f4d2e;
+            --gron-ljus: #2e6b41;
+            --panel: #ffffff;
+            --text: #1c2b22;
+            --grå: #6b7a70;
+            --röd: #b23b3b;
+            --gul: #b8860b;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            height: 100%;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            color: var(--text);
+        }
+
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        header {
+            background: var(--gron);
+            color: #fff;
+            padding: env(safe-area-inset-top) 12px 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        header h1 { font-size: 1rem; margin: 8px 0; flex: 1; }
+
+        .status-chip {
+            font-size: 0.72rem;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.18);
+            white-space: nowrap;
+        }
+
+        .status-chip--offline { background: var(--röd); }
+        .status-chip--online { background: var(--gron-ljus); }
+
+        .offline-banner {
+            background: var(--gul);
+            color: #fff;
+            font-size: 0.8rem;
+            padding: 6px 12px;
+            text-align: center;
+        }
+
+        #karta { flex: 1; min-height: 0; }
+
+        .panel {
+            background: var(--panel);
+            border-top: 1px solid #e2e8e5;
+            padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+            max-height: 58vh;
+            overflow-y: auto;
+        }
+
+        .rad { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+        .rad label { font-size: 0.78rem; color: var(--grå); min-width: 92px; }
+
+        input, select {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #cdd8d1;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        button {
+            border: none;
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-primär { background: var(--gron); color: #fff; }
+        .btn-sekundär { background: #eef3f0; color: var(--gron); }
+        .btn-full { width: 100%; }
+        .btn-rad { display: flex; gap: 8px; }
+        .btn-rad button { flex: 1; }
+
+        .avdelare { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--grå); margin: 12px 0 4px; }
+
+        .lista { list-style: none; margin: 6px 0 0; padding: 0; }
+        .lista li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            border-bottom: 1px solid #eef1ef;
+            font-size: 0.9rem;
+        }
+
+        .taggar { display: flex; gap: 6px; }
+        .tagg { font-size: 0.68rem; padding: 2px 7px; border-radius: 999px; background: #eef3f0; color: var(--gron); }
+        .tagg--inv { background: #e7eefc; color: #2b4b8f; }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: calc(16px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            background: rgba(28,43,34,0.95);
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            z-index: 1000;
+            display: none;
+            max-width: 90vw;
+            text-align: center;
+        }
+
+        .toast--visas { display: block; }
+
+        .hjälp { font-size: 0.78rem; color: var(--grå); margin: 4px 0 10px; }
+        .dold { display: none !important; }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <header>
+            <h1>Fält · Skogsvård</h1>
+            <span id="synk-chip" class="status-chip dold"></span>
+            <span id="online-chip" class="status-chip">…</span>
+        </header>
+
+        <div id="offline-banner" class="offline-banner dold">Offline – registreringar sparas lokalt och synkas när täckning finns.</div>
+
+        <div id="karta"></div>
+
+        <section class="panel">
+            <!-- Startvy: förbered + lista över nedladdat -->
+            <div id="val-vy">
+                <div class="btn-rad">
+                    <button id="forbered" class="btn-primär">Förbered offline (ladda ner allt)</button>
+                    <button id="synka" class="btn-sekundär">Synka nu</button>
+                </div>
+                <p class="hjälp" id="forbered-status">
+                    Ladda ner trakter och inventeringar medan du har täckning. Sedan kan du
+                    plantera och inventera helt offline – allt synkas när täckningen är tillbaka.
+                </p>
+
+                <div class="avdelare">Nedladdat för offline</div>
+                <ul id="offline-lista" class="lista"></ul>
+            </div>
+
+            <!-- Inventeringsvy -->
+            <div id="inventering-vy" class="dold">
+                <div class="rad">
+                    <label>Inventering</label>
+                    <span id="inv-titel" style="flex:1;font-weight:600;"></span>
+                    <button class="btn-sekundär tillbaka" style="min-width:auto;padding:8px 12px;">Tillbaka</button>
+                </div>
+                <div class="rad">
+                    <label for="inv-antal">Antal plantor</label>
+                    <input id="inv-antal" type="number" inputmode="numeric" min="0" value="0" />
+                </div>
+                <div class="rad">
+                    <label for="inv-tradsort">Trädslag</label>
+                    <select id="inv-tradsort">
+                        <option value="">– Ej angiven –</option>
+                        <option>Tall</option>
+                        <option>Gran</option>
+                        <option>Contorta</option>
+                        <option>Björk</option>
+                    </select>
+                </div>
+                <div class="rad">
+                    <label for="inv-kommentar">Kommentar</label>
+                    <input id="inv-kommentar" type="text" placeholder="Valfri notering" />
+                </div>
+                <p class="hjälp" id="inv-plats-hjälp">Tryck på kartan för att sätta provytans plats (valfritt).</p>
+                <button id="inv-spara" class="btn-primär btn-full">Registrera provyta</button>
+                <ul id="inv-provyta-lista" class="lista"></ul>
+            </div>
+
+            <!-- Planteringsvy (delområde) -->
+            <div id="plant-vy" class="dold">
+                <div class="rad">
+                    <label>Trakt</label>
+                    <span id="plant-titel" style="flex:1;font-weight:600;"></span>
+                    <button class="btn-sekundär tillbaka" style="min-width:auto;padding:8px 12px;">Tillbaka</button>
+                </div>
+
+                <p class="hjälp" id="plant-hjälp">Välj ett delområde i listan eller på kartan för att rapportera.</p>
+
+                <!-- Val av delområde -->
+                <div id="delomrade-val">
+                    <div class="avdelare">Delområden</div>
+                    <ul id="delomrade-lista" class="lista"></ul>
+                </div>
+
+                <!-- Redigering av valt delområde -->
+                <div id="delomrade-form" class="dold">
+                    <div class="rad">
+                        <label>Delområde</label>
+                        <span id="do-titel" style="flex:1;font-weight:600;"></span>
+                        <button id="do-stang" class="btn-sekundär" style="min-width:auto;padding:8px 12px;">Byt</button>
+                    </div>
+                    <div class="rad">
+                        <label for="do-status">Status</label>
+                        <select id="do-status">
+                            <option value="0">Ej påbörjad</option>
+                            <option value="1">Pågående</option>
+                            <option value="2">Klar</option>
+                        </select>
+                    </div>
+                    <div class="rad">
+                        <label for="do-antal">Antal plantor</label>
+                        <input id="do-antal" type="number" inputmode="numeric" min="0" value="0" />
+                    </div>
+                    <div class="rad">
+                        <label for="do-tradsort">Trädslag</label>
+                        <select id="do-tradsort">
+                            <option value="">– Traktens standard –</option>
+                            <option>Tall</option>
+                            <option>Gran</option>
+                            <option>Contorta</option>
+                            <option>Björk</option>
+                        </select>
+                    </div>
+                    <div class="rad">
+                        <label for="do-kommentar">Kommentar</label>
+                        <input id="do-kommentar" type="text" placeholder="Avvikelse / notering" />
+                    </div>
+                    <button id="do-spara" class="btn-primär btn-full">Spara delområde</button>
+
+                    <div class="avdelare">Provytor</div>
+                    <p class="hjälp" id="do-plats-hjälp">Tryck på kartan för att sätta provytans plats (valfritt).</p>
+                    <div class="rad">
+                        <label for="do-provyta-antal">Provyta antal</label>
+                        <input id="do-provyta-antal" type="number" inputmode="numeric" min="0" value="0" />
+                        <button id="do-provyta-lagg" class="btn-sekundär" style="min-width:auto;">Lägg till</button>
+                    </div>
+                    <ul id="do-provyta-lista" class="lista"></ul>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    <script src="/js/offline-db.js"></script>
+    <script src="/js/offline-sync.js"></script>
+    <script src="/falt/falt.js"></script>
+</body>
+
+</html>
