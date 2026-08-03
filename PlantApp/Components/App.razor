@@ -3,8 +3,20 @@
 
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <base href="/" />
+
+    <!-- PWA: gör appen installerbar och döljer adressfältet på hemskärmen -->
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#1f4d2e" />
+
+    <!-- iOS/Safari: krävs för att adressfältet ska döljas (manifestets display räcker inte på iPhone) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Skogsvård" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+
     <ResourcePreloader />
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["PlantApp.styles.css"]" />
