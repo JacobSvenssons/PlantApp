@@ -259,13 +259,6 @@
     color: var(--color-primary, #1f4d2e);
 }
 
-.offline-forbered__lank {
-    font-size: 0.9rem;
-    color: var(--color-primary, #1f4d2e);
-    text-decoration: none;
-    font-weight: 600;
-}
-
 .offline-forbered__status {
     flex-basis: 100%;
     font-size: 0.85rem;

@@ -26,7 +26,6 @@
             <button class="btn-pill btn-pill--sekundar" @onclick="ForberedOffline" disabled="@_forberederOffline">
                 @(_forberederOffline ? "Laddar ner…" : "⬇ Förbered offline")
             </button>
-            <a class="offline-forbered__lank" href="/falt/">Öppna fältläge →</a>
             @if (_offlineStatus is not null)
             {
                 <div class="offline-forbered__status">@_offlineStatus</div>
