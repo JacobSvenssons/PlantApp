@@ -18,7 +18,7 @@
 			</div>
 		</div>
 
-		<EditForm Model="Input" method="post" OnValidSubmit="LoginAsync" FormName="login">
+		<EditForm Model="Input" method="post" OnValidSubmit="LoginAsync" FormName="login" data-enhance="false">
 			<DataAnnotationsValidator />
 
 			@if (_errorMessage is not null)

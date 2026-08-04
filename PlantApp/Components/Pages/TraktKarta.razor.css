@@ -68,7 +68,11 @@
     background: var(--color-surface, #ffffff);
     border-radius: 28px 28px 0 0;
     box-shadow: 0 -8px 40px rgba(22, 58, 34, 0.22);
-    padding: 1.5rem 1.75rem 1.75rem;
+    padding: 1rem 1.25rem 1.25rem;
+    /* Får aldrig täcka hela skärmen – lämna kartan (och +/- knapparna) synliga
+       högst upp och scrolla panelens innehåll internt vid behov. */
+    max-height: 72dvh;
+    overflow-y: auto;
     animation: sheet-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -150,7 +154,7 @@
     align-items: flex-start;
     justify-content: space-between;
     margin-top: 0.5rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.7rem;
 }
 
 .rapport-panel__titel {
@@ -182,15 +186,15 @@
 .rapport-panel__grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.75rem 1rem;
-    margin-bottom: 1rem;
+    gap: 0.6rem 1rem;
+    margin-bottom: 0.7rem;
 }
 
 .falt {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
-    margin-bottom: 1rem;
+    gap: 0.3rem;
+    margin-bottom: 0.7rem;
 }
 
 .falt label {
@@ -217,7 +221,12 @@
     padding: 0.5rem 0.65rem;
     border: 1px solid #d1d5db;
     border-radius: 8px;
-    font-size: 0.95rem;
+    /* Minst 16px – annars auto-zoomar iOS/Safari hela sidan vid fokus. */
+    font-size: 16px;
+    /* Håll fälten inom sin rutnätscell så inget sticker ut till höger. */
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .falt__input:focus {
