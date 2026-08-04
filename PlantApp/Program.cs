@@ -99,6 +99,11 @@ app.UseAuthorization();
 
 app.UseAntiforgery();
 
+// Låt kataloganrop som "/falt/" servera "/falt/index.html". MapStaticAssets serverar
+// inte standarddokument automatiskt, så utan detta svarar servern 404 (→ /not-found)
+// när man öppnar den fristående offline-fältytan.
+app.UseDefaultFiles();
+
 app.MapStaticAssets();
 app.MapControllers();
 

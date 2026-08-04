@@ -24,6 +24,8 @@ export function initMap(containerId, geoJson, dotNetRef) {
     ensureDelomradePointerStyle();
 
     const map = L.map(containerId, { zoomControl: true });
+    // Flytta +/- till höger så den inte skymmer provyte-listan/panelen till vänster.
+    map.zoomControl.setPosition("topright");
 
     L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",

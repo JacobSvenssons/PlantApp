@@ -92,7 +92,10 @@
 		await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
 		var target = string.IsNullOrWhiteSpace(ReturnUrl) ? "/" : $"/{ReturnUrl.TrimStart('/')}";
-		NavigationManager.NavigateTo(target);
+		// Tvinga en full sidladdning (inte enhanced navigation) efter inloggning. Annars
+		// startar den interaktiva kretsen från det anonyma, persisterade auth-läget och
+		// användaren ser en "null"-vy tills sidan laddas om – särskilt tydligt bakom Ngrok.
+		NavigationManager.NavigateTo(target, forceLoad: true);
 	}
 
 	private sealed class LoginInput

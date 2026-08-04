@@ -80,7 +80,9 @@
     function initKarta() {
         if (karta) return;
         karta = L.map("karta", { zoomControl: true }).setView([62.4, 14.0], 6);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        // Flytta +/- till höger så den inte skymmer panelen/listorna till vänster.
+        karta.zoomControl.setPosition("topright");
+        L.tileLayer(
             maxZoom: 19,
             attribution: "© OpenStreetMap"
         }).addTo(karta);

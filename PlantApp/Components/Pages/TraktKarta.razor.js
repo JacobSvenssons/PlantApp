@@ -71,6 +71,8 @@ export function initMap(containerId, geoJson, dotNetRef) {
     ensureDelomradePointerStyle();
 
     const map = L.map(containerId, { zoomControl: true });
+    // Flytta +/- till höger så den inte skymmer listan/panelen till vänster.
+    map.zoomControl.setPosition("topright");
 
     // Öppet satellitlager (Esri World Imagery).
     L.tileLayer(
