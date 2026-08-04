@@ -1,6 +1,8 @@
 .inventering-page {
     position: relative;
-    height: calc(100vh - 3.5rem);
+    /* Reservera plats för den flytande bottennavigeringen så kartans attribution
+       och panelerna hamnar ovanför navet. dvh = korrekt höjd på mobil. */
+    height: calc(100dvh - 5rem);
     width: 100%;
     overflow: hidden;
 }

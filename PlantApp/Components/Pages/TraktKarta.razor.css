@@ -1,6 +1,9 @@
 .trakt-karta-page {
     position: relative;
-    height: calc(100vh - 3.5rem);
+    /* Reservera plats för den flytande bottennavigeringen (~4.2rem hög, 1rem från
+       botten) så att kartans attribution, exportknapp och rapportpanel hamnar
+       ovanför navet i stället för under det. dvh = korrekt höjd på mobil. */
+    height: calc(100dvh - 5rem);
     width: 100%;
     overflow: hidden;
 }

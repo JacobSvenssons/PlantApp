@@ -71,16 +71,17 @@ export function initMap(containerId, geoJson, dotNetRef) {
     ensureDelomradePointerStyle();
 
     const map = L.map(containerId, { zoomControl: true });
-    // Flytta +/- till höger så den inte skymmer listan/panelen till vänster.
-    map.zoomControl.setPosition("topright");
+    // Zoomen till vänster – uppe till höger ligger avvikelse-sammanfattningen.
+    map.zoomControl.setPosition("topleft");
+    // Kompakt attribution (utan "Leaflet"-prefix) så den inte tar två rader nedtill.
+    map.attributionControl.setPrefix(false);
 
     // Öppet satellitlager (Esri World Imagery).
     L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         {
             maxZoom: 19,
-            attribution:
-                "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community"
+            attribution: "© Esri"
         }
     ).addTo(map);
 
