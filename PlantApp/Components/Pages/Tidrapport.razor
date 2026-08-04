@@ -5,7 +5,7 @@
 @using PlantApp.Dtos
 @using PlantApp.Models
 @using PlantApp.Services
-@attribute [Authorize(Roles = "Plantsattare")]
+@attribute [Authorize(Roles = "Plantsattare,Inventerare")]
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
 
