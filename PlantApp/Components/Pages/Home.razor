@@ -107,6 +107,13 @@
                 </select>
             </div>
 
+            @* Primär åtgärd direkt efter trakt-valet – plantören vill öppna kartan snabbt. *@
+            <div class="start-actions">
+                <button class="btn-pill" disabled="@(_selectedTraktId <= 0)" @onclick="OpenKarta">
+                    Öppna karta
+                </button>
+            </div>
+
             @if (_laddarStatistik)
             {
                 <div class="start-melding">Laddar statistik…</div>
@@ -160,12 +167,6 @@
                     </div>
                 </div>
             }
-
-            <div class="start-actions">
-                <button class="btn-pill" disabled="@(_selectedTraktId <= 0)" @onclick="OpenKarta">
-                    Öppna karta
-                </button>
-            </div>
         }
     </div>
 </div>

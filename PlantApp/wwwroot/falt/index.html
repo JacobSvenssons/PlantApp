@@ -77,6 +77,12 @@
 
         #karta { flex: 1; min-height: 0; }
 
+        /* Dölj den inbyggda +/- zoomknappen på mobil (nyp-zoom fungerar ändå) så den
+           inte skymmer kartvyn. Visas på bredare skärmar. */
+        @media (max-width: 820px) {
+            .leaflet-control-zoom { display: none; }
+        }
+
         .panel {
             background: var(--panel);
             border-top: 1px solid #e2e8e5;

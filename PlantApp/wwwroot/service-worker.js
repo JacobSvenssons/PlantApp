@@ -11,7 +11,7 @@
 //  - Navigering till /falt (den fristående offline-fältytan) fungerar offline via cache.
 //  - Navigering till Blazor-sidor går alltid mot nätet; utan nät hänvisas till /falt.
 
-const CACHE_VERSION = "plantapp-v2";
+const CACHE_VERSION = "plantapp-v3";
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
