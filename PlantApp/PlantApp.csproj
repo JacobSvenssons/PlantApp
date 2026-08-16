@@ -8,6 +8,7 @@
     <!-- GDAL native-runtime (MaxRev.Gdal) finns endast för 64-bit; tvinga processen till x64
          så att GdalBase.ConfigureAll() kan ladda native-DLL:erna utan arkitektur-mismatch. -->
     <PlatformTarget>x64</PlatformTarget>
+    <UserSecretsId>ddd11178-a9c2-4176-a60a-14eee613afd0</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

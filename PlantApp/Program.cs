@@ -102,7 +102,7 @@ if (app.Environment.IsDevelopment())
 }
 
 // Seeda roller och super-admin (idempotent) samt fyll användarkatalogens cache.
-await SeedIdentityAsync(app.Services);
+await SeedIdentityAsync(app.Services, app.Environment.IsProduction());
 
 // Configure the HTTP request pipeline.
 // Måste ligga tidigast av allt så att efterföljande middleware ser rätt schema/host
@@ -144,13 +144,13 @@ app.MapRazorComponents<App>()
 app.Run();
 
 // --- Seedning av Identity-roller och super-admin (idempotent) ---
-static async Task SeedIdentityAsync(IServiceProvider services)
+static async Task SeedIdentityAsync(IServiceProvider services, bool isProduction)
 {
     using var scope = services.CreateScope();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
-    var db = scope.ServiceProvider.GetRequiredService<PlantAppDbContext>();
     var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Seed");
 
     foreach (var roll in AppRoles.Alla)
     {
@@ -160,32 +160,33 @@ static async Task SeedIdentityAsync(IServiceProvider services)
         }
     }
 
-    // Standardorganisation som befintlig data (migrerad) hör till.
-    var standardOrg = await db.Organisationer.FirstOrDefaultAsync(o => o.Namn == "Standardorganisation");
-    if (standardOrg is null)
-    {
-        standardOrg = new Organisation { Namn = "Standardorganisation", ArAktiv = true, SkapadDatum = DateTime.UtcNow };
-        db.Organisationer.Add(standardOrg);
-        await db.SaveChangesAsync();
-    }
-
-    // Ekonomiinställning (en rad) per organisation.
-    if (!await db.EkonomiInstallningar.IgnoreQueryFilters().AnyAsync(e => e.OrganisationId == standardOrg.Id))
-    {
-        db.EkonomiInstallningar.Add(new EkonomiInstallning
-        {
-            OrganisationId = standardOrg.Id,
-            StandardErsattningsTyp = ErsattningsTyp.HelAckord
-        });
-        await db.SaveChangesAsync();
-    }
-
     // Super-admin från konfiguration (SeedAdmin:Email / SeedAdmin:Password). Skapas bara
     // om det inte redan finns någon super-admin. OrganisationId = null (över alla organisationer).
+    // I Development kommer värdena från User Secrets, i Production från miljövariabler
+    // (SeedAdmin__Email / SeedAdmin__Password) eller motsvarande säker konfiguration –
+    // aldrig från incheckade appsettings-filer.
     var superAdminEmail = config["SeedAdmin:Email"];
     var superAdminPassword = config["SeedAdmin:Password"];
-    if (!string.IsNullOrWhiteSpace(superAdminEmail) && !string.IsNullOrWhiteSpace(superAdminPassword)
-        && await userManager.FindByEmailAsync(superAdminEmail) is null)
+
+    if (string.IsNullOrWhiteSpace(superAdminEmail) || string.IsNullOrWhiteSpace(superAdminPassword))
+    {
+        // Utan konfiguration seedas ingen super-admin. Varna tydligt i Production så att
+        // en deploy inte oavsiktligt slutar utan inloggningsbar administratör.
+        if (isProduction)
+        {
+            logger.LogWarning(
+                "SeedAdmin:Email/Password saknas – ingen super-admin seedades. " +
+                "Ange dem via miljövariabler (SeedAdmin__Email / SeedAdmin__Password).");
+        }
+    }
+    else if (isProduction && superAdminPassword == "jacob123")
+    {
+        // Skyddsnät: den kända dev-hemligheten får aldrig användas i Production.
+        throw new InvalidOperationException(
+            "Det kända dev-lösenordet för SeedAdmin får inte användas i Production. " +
+            "Sätt ett starkt lösenord via säker konfiguration (t.ex. miljövariabler).");
+    }
+    else if (await userManager.FindByEmailAsync(superAdminEmail) is null)
     {
         var superAdmin = new AppUser
         {
@@ -202,6 +203,11 @@ static async Task SeedIdentityAsync(IServiceProvider services)
         if (superResult.Succeeded)
         {
             await userManager.AddToRoleAsync(superAdmin, AppRoles.SuperAdmin);
+        }
+        else
+        {
+            logger.LogError("Kunde inte skapa super-admin: {Fel}",
+                string.Join("; ", superResult.Errors.Select(e => e.Description)));
         }
     }
 
