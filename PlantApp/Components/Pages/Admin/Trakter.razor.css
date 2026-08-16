@@ -36,7 +36,7 @@
     border: 1px solid #d1d5db;
     border-radius: 8px;
     font-size: 0.8rem;
-    background: #fff;
+    background-color: #fff;
 }
 
 .inventering-start__select {
@@ -44,7 +44,7 @@
     border: 1px solid #d1d5db;
     border-radius: 8px;
     font-size: 0.8rem;
-    background: #fff;
+    background-color: #fff;
     max-width: 12rem;
 }
 

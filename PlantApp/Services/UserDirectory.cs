@@ -235,6 +235,57 @@ public sealed class UserDirectory
         return result.Succeeded;
     }
 
+    /// <summary>Ändrar rollen på en befintlig användare (organisations-admin).</summary>
+    public async Task<IReadOnlyList<string>> AndraRollAsync(string userName, string nyRoll)
+    {
+        if (!AppRoles.OrganisationsRoller.Contains(nyRoll))
+        {
+            return ["Ogiltig roll."];
+        }
+
+        using var scope = _scopeFactory.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+
+        var user = await userManager.FindByNameAsync(userName);
+        if (user is null)
+        {
+            return ["Användaren hittades inte."];
+        }
+
+        if (user.Roll == nyRoll)
+        {
+            return [];
+        }
+
+        // Uppdatera både domänfältet (Roll) och Identity-rollmedlemskapet så att
+        // [Authorize(Roles = ...)] och cachen hålls i synk.
+        var befintligaRoller = await userManager.GetRolesAsync(user);
+        if (befintligaRoller.Count > 0)
+        {
+            var borttag = await userManager.RemoveFromRolesAsync(user, befintligaRoller);
+            if (!borttag.Succeeded)
+            {
+                return borttag.Errors.Select(e => e.Description).ToList();
+            }
+        }
+
+        var tillagg = await userManager.AddToRoleAsync(user, nyRoll);
+        if (!tillagg.Succeeded)
+        {
+            return tillagg.Errors.Select(e => e.Description).ToList();
+        }
+
+        user.Roll = nyRoll;
+        var result = await userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            return result.Errors.Select(e => e.Description).ToList();
+        }
+
+        await RefreshCacheAsync();
+        return [];
+    }
+
     /// <summary>Sätter ett nytt lösenord för en användare (admin-återställning).</summary>
     public async Task<IReadOnlyList<string>> AndraLosenordAsync(string userName, string nyttLosenord)
     {

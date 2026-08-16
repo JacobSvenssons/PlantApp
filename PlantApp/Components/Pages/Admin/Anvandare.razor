@@ -118,11 +118,33 @@
 									</button>
 								}
 								<button class="btn-pill btn-pill--ghost btn-pill--sm"
+										@onclick="() => VisaRoll(user.UserName, user.Role)" disabled="@_arbetar">
+									Byt roll
+								</button>
+								<button class="btn-pill btn-pill--ghost btn-pill--sm"
 										@onclick="() => VisaLosenord(user.UserName)" disabled="@_arbetar">
 									Byt lösenord
 								</button>
 							</td>
 						</tr>
+						@if (_rollFor == user.UserName)
+						{
+							<tr>
+								<td colspan="5" class="anvandare-losenordsrad">
+									<label class="anvandare-losenordsrad__label" for="roll-@user.UserName">Ny roll</label>
+									<select id="roll-@user.UserName" class="anvandare-input" @bind="_valdRoll">
+										<option value="@AppRoles.Plantsattare">Plantsättare</option>
+										<option value="@AppRoles.Plantbas">Plantbas</option>
+										<option value="@AppRoles.Inventerare">Inventerare</option>
+										<option value="@AppRoles.Admin">Admin</option>
+									</select>
+									<button class="btn-pill btn-pill--sm" @onclick="() => AndraRollAsync(user.UserName)"
+											disabled="@_arbetar">Spara</button>
+									<button class="btn-pill btn-pill--ghost btn-pill--sm" @onclick="AvbrytRoll"
+											disabled="@_arbetar">Avbryt</button>
+								</td>
+							</tr>
+						}
 						@if (_losenordFor == user.UserName)
 						{
 							<tr>
@@ -154,6 +176,9 @@
 
 	private string? _losenordFor;
 	private string _nyttLosenordAndra = "";
+
+	private string? _rollFor;
+	private string _valdRoll = AppRoles.Plantsattare;
 
 	private string? _message;
 	private List<string> _errors = new();
@@ -226,9 +251,46 @@
 		}
 	}
 
+	private void VisaRoll(string userName, string nuvarandeRoll)
+	{
+		Rensa();
+		_losenordFor = null;
+		_rollFor = userName;
+		_valdRoll = nuvarandeRoll;
+	}
+
+	private void AvbrytRoll()
+	{
+		_rollFor = null;
+	}
+
+	private async Task AndraRollAsync(string userName)
+	{
+		Rensa();
+		_arbetar = true;
+		try
+		{
+			var fel = await UserDirectory.AndraRollAsync(userName, _valdRoll);
+			if (fel.Count > 0)
+			{
+				_errors = fel.ToList();
+				return;
+			}
+
+			_message = $"Rollen för \"{userName}\" uppdaterades till {RollNamn(_valdRoll)}.";
+			_rollFor = null;
+			await LaddaAsync();
+		}
+		finally
+		{
+			_arbetar = false;
+		}
+	}
+
 	private void VisaLosenord(string userName)
 	{
 		Rensa();
+		_rollFor = null;
 		_losenordFor = userName;
 		_nyttLosenordAndra = "";
 	}

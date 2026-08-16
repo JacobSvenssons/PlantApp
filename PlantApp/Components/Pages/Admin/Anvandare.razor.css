@@ -100,7 +100,7 @@
     border: 1px solid #d1d5db;
     border-radius: 8px;
     font-size: 0.9rem;
-    background: #fff;
+    background-color: #fff;
 }
 
 .anvandare-rad--inaktiv {
@@ -136,4 +136,52 @@
 .btn-pill--sm {
     padding: 0.3rem 0.7rem;
     font-size: 0.8rem;
+}
+
+/* Tabell */
+.tabell {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.tabell thead th {
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 2px solid #e5e7eb;
+    color: #6b7280;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.tabell tbody td {
+    padding: 0.7rem 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+    color: #1f2933;
+    vertical-align: middle;
+}
+
+.tabell tbody tr:hover td {
+    background: #f9fafb;
+}
+
+.tabell td code {
+    font-size: 0.85rem;
+    color: #374151;
+    word-break: break-all;
+}
+
+.tabell__actions {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.tabell td.tabell__actions .btn-pill {
+    margin-left: 0.4rem;
+}
+
+.tabell td.tabell__actions .btn-pill:first-child {
+    margin-left: 0;
 }

@@ -85,12 +85,21 @@
 }
 
 .start-select {
-    padding: 0.7rem 0.85rem;
+    width: 100%;
+    max-width: 24rem;
+    padding: 0.7rem 2.4rem 0.7rem 0.85rem;
     border-radius: var(--radius-md);
     border: 1px solid var(--color-border);
-    background: #fff;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%23475569' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    background-size: 0.75rem;
     font-size: 1rem;
     color: var(--color-text);
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
 }
 
 .start-select:focus {

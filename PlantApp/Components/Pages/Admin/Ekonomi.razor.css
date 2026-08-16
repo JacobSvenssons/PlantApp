@@ -91,7 +91,7 @@
     border: 1px solid var(--color-border);
     border-radius: 8px;
     font-size: 0.9rem;
-    background: #fff;
+    background-color: #fff;
 }
 
 .ekonomi-select--sm {

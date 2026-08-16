@@ -83,6 +83,19 @@ h1, h2, h3 {
     background: rgba(31, 77, 46, 0.06);
 }
 
+/* Enhetlig pil för alla dropdowns i appen. Enskilda komponenter kan sätta
+   egen bakgrundsbild/position via en mer specifik klass-selektor. */
+select:not([multiple]) {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%23475569' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 0.7rem;
+    padding-right: 2.1rem !important;
+}
+
 /* Enkelt, mjukt kort */
 .card-soft {
     background: var(--color-surface);

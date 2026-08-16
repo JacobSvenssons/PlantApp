@@ -377,7 +377,7 @@
     border-radius: 10px;
     /* Minst 16px – annars auto-zoomar iOS/Safari hela sidan när fältet får fokus. */
     font-size: 16px;
-    background: #fff;
+    background-color: #fff;
     color: #1f2933;
 }
 
