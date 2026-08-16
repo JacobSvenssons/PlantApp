@@ -11,6 +11,9 @@ public class Tidrapport
 {
 	public int Id { get; set; }
 
+	/// <summary>Organisationen (tenant) som tidrapporten tillhör.</summary>
+	public int OrganisationId { get; set; }
+
 	/// <summary>Användarnamn för plantsättaren som rapporterat tiden.</summary>
 	public string Anvandare { get; set; } = "";
 

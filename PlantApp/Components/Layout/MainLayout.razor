@@ -8,6 +8,13 @@
         <span class="app-nav__text">Start</span>
     </NavLink>
 
+    <AuthorizeView Roles="SuperAdmin">
+        <NavLink class="app-nav__link" href="/super/organisationer">
+            <span class="app-nav__ikon" aria-hidden="true">🏢</span>
+            <span class="app-nav__text">Organisationer</span>
+        </NavLink>
+    </AuthorizeView>
+
     <AuthorizeView Roles="Admin">
         <NavLink class="app-nav__link" href="/admin">
             <span class="app-nav__ikon" aria-hidden="true">⚙️</span>

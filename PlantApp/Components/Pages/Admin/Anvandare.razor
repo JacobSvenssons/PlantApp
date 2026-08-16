@@ -1,0 +1,270 @@
+@page "/admin/anvandare"
+@rendermode InteractiveServer
+@using System.Security.Claims
+@using PlantApp.Services
+@attribute [Authorize(Roles = "Admin")]
+@inject UserDirectory UserDirectory
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>PlantApp – Användare</PageTitle>
+
+<div class="anvandare-page">
+	<div class="anvandare-card card-soft">
+		<div class="anvandare-card__header">
+			<div class="anvandare-card__brand">
+				<span class="anvandare-card__logo" aria-hidden="true">👥</span>
+				<div>
+					<h1 class="anvandare-card__titel">Användare</h1>
+					<p class="anvandare-card__subtitel">Hantera plantbasar, plantsättare och inventerare.</p>
+				</div>
+			</div>
+			<a class="btn-pill btn-pill--ghost" href="/admin">Till admin</a>
+		</div>
+
+		@if (_message is not null)
+		{
+			<div class="anvandare-melding anvandare-melding--ok">@_message</div>
+		}
+		@if (_errors.Count > 0)
+		{
+			<div class="anvandare-melding anvandare-melding--fel">
+				<ul>
+					@foreach (var fel in _errors)
+					{
+						<li>@fel</li>
+					}
+				</ul>
+			</div>
+		}
+
+		<section class="anvandare-ny">
+			<h2 class="anvandare-ny__rubrik">Lägg till användare</h2>
+			<div class="anvandare-ny__rad">
+				<div class="anvandare-falt">
+					<label for="ny-namn">Namn</label>
+					<input id="ny-namn" class="anvandare-input" @bind="_nyttNamn" placeholder="T.ex. Peter Plant" />
+				</div>
+				<div class="anvandare-falt">
+					<label for="ny-anvandarnamn">E-post</label>
+					<input id="ny-anvandarnamn" type="email" class="anvandare-input" @bind="_nyEpost" placeholder="peter@foretag.se" />
+				</div>
+				<div class="anvandare-falt">
+					<label for="ny-roll">Roll</label>
+					<select id="ny-roll" class="anvandare-input" @bind="_nyRoll">
+						<option value="@AppRoles.Plantsattare">Plantsättare</option>
+						<option value="@AppRoles.Plantbas">Plantbas</option>
+						<option value="@AppRoles.Inventerare">Inventerare</option>
+						<option value="@AppRoles.Admin">Admin</option>
+					</select>
+				</div>
+				<div class="anvandare-falt">
+					<label for="ny-losenord">Lösenord</label>
+					<input id="ny-losenord" type="text" class="anvandare-input" @bind="_nyttLosenord" placeholder="Minst 6 tecken" />
+				</div>
+				<button class="btn-pill" @onclick="SkapaAsync" disabled="@_arbetar">Lägg till</button>
+			</div>
+		</section>
+
+		@if (_users is null)
+		{
+			<div class="anvandare-melding">Laddar användare…</div>
+		}
+		else if (_users.Count == 0)
+		{
+			<div class="anvandare-melding">Inga användare finns ännu.</div>
+		}
+		else
+		{
+			<table class="tabell">
+				<thead>
+					<tr>
+						<th>Namn</th>
+						<th>Användarnamn</th>
+						<th>Roll</th>
+						<th>Status</th>
+						<th class="tabell__actions">Åtgärd</th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var user in _users)
+					{
+						<tr class="@(user.ArAktiv ? "" : "anvandare-rad--inaktiv")">
+								<td>@user.DisplayName</td>
+								<td><code>@user.Email</code></td>
+								<td>@RollNamn(user.Role)</td>
+							<td>
+								@if (user.ArAktiv)
+								{
+									<span class="anvandare-status anvandare-status--aktiv">Aktiv</span>
+								}
+								else
+								{
+									<span class="anvandare-status anvandare-status--inaktiv">Inaktiv</span>
+								}
+							</td>
+							<td class="tabell__actions">
+								@if (user.ArAktiv)
+								{
+									<button class="btn-pill btn-pill--ghost btn-pill--sm"
+											@onclick="() => SattAktivAsync(user.UserName, false)" disabled="@_arbetar">
+										Inaktivera
+									</button>
+								}
+								else
+								{
+									<button class="btn-pill btn-pill--ghost btn-pill--sm"
+											@onclick="() => SattAktivAsync(user.UserName, true)" disabled="@_arbetar">
+										Återaktivera
+									</button>
+								}
+								<button class="btn-pill btn-pill--ghost btn-pill--sm"
+										@onclick="() => VisaLosenord(user.UserName)" disabled="@_arbetar">
+									Byt lösenord
+								</button>
+							</td>
+						</tr>
+						@if (_losenordFor == user.UserName)
+						{
+							<tr>
+								<td colspan="5" class="anvandare-losenordsrad">
+									<input type="text" class="anvandare-input" @bind="_nyttLosenordAndra"
+										   placeholder="Nytt lösenord (minst 6 tecken)" />
+									<button class="btn-pill btn-pill--sm" @onclick="() => AndraLosenordAsync(user.UserName)"
+											disabled="@_arbetar">Spara</button>
+									<button class="btn-pill btn-pill--ghost btn-pill--sm" @onclick="AvbrytLosenord"
+											disabled="@_arbetar">Avbryt</button>
+								</td>
+							</tr>
+						}
+					}
+				</tbody>
+			</table>
+		}
+	</div>
+</div>
+
+@code {
+	private IReadOnlyList<UserDirectory.AppUserInfo>? _users;
+	private int? _organisationId;
+
+	private string _nyttNamn = "";
+	private string _nyEpost = "";
+	private string _nyRoll = AppRoles.Plantsattare;
+	private string _nyttLosenord = "";
+
+	private string? _losenordFor;
+	private string _nyttLosenordAndra = "";
+
+	private string? _message;
+	private List<string> _errors = new();
+	private bool _arbetar;
+
+	protected override async Task OnInitializedAsync()
+	{
+		var user = (await AuthStateProvider.GetAuthenticationStateAsync()).User;
+		var orgClaim = user.FindFirst(TenantProvider.OrganisationClaimType)?.Value;
+		_organisationId = int.TryParse(orgClaim, out var id) ? id : null;
+		await LaddaAsync();
+	}
+
+	private async Task LaddaAsync() => _users = await UserDirectory.ListaAllaAsync(_organisationId);
+
+	private static string RollNamn(string roll) => roll switch
+	{
+		AppRoles.Admin => "Admin",
+		AppRoles.Plantbas => "Plantbas",
+		AppRoles.Plantsattare => "Plantsättare",
+		AppRoles.Inventerare => "Inventerare",
+		_ => roll
+	};
+
+	private async Task SkapaAsync()
+	{
+		Rensa();
+		_arbetar = true;
+		try
+		{
+			var fel = await UserDirectory.SkapaAnvandareAsync(_nyEpost, _nyttNamn, _nyRoll, _nyttLosenord, _organisationId);
+			if (fel.Count > 0)
+			{
+				_errors = fel.ToList();
+				return;
+			}
+
+			_message = $"Användaren \"{_nyEpost}\" skapades.";
+			_nyttNamn = "";
+			_nyEpost = "";
+			_nyttLosenord = "";
+			_nyRoll = AppRoles.Plantsattare;
+			await LaddaAsync();
+		}
+		finally
+		{
+			_arbetar = false;
+		}
+	}
+
+	private async Task SattAktivAsync(string userName, bool aktiv)
+	{
+		Rensa();
+		_arbetar = true;
+		try
+		{
+			if (await UserDirectory.SattAktivAsync(userName, aktiv))
+			{
+				_message = aktiv ? $"\"{userName}\" återaktiverades." : $"\"{userName}\" inaktiverades.";
+				await LaddaAsync();
+			}
+			else
+			{
+				_errors = ["Kunde inte uppdatera användaren."];
+			}
+		}
+		finally
+		{
+			_arbetar = false;
+		}
+	}
+
+	private void VisaLosenord(string userName)
+	{
+		Rensa();
+		_losenordFor = userName;
+		_nyttLosenordAndra = "";
+	}
+
+	private void AvbrytLosenord()
+	{
+		_losenordFor = null;
+		_nyttLosenordAndra = "";
+	}
+
+	private async Task AndraLosenordAsync(string userName)
+	{
+		Rensa();
+		_arbetar = true;
+		try
+		{
+			var fel = await UserDirectory.AndraLosenordAsync(userName, _nyttLosenordAndra);
+			if (fel.Count > 0)
+			{
+				_errors = fel.ToList();
+				return;
+			}
+
+			_message = $"Lösenordet för \"{userName}\" uppdaterades.";
+			_losenordFor = null;
+			_nyttLosenordAndra = "";
+		}
+		finally
+		{
+			_arbetar = false;
+		}
+	}
+
+	private void Rensa()
+	{
+		_message = null;
+		_errors = new();
+	}
+}

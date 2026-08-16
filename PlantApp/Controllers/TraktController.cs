@@ -424,9 +424,9 @@ public class TraktController : ControllerBase
 
         // Ägarskapskontroll: en plantsättare får inte ändra på en ruta som är tilldelad
         // en annan plantör. Admin och plantbas har alltid rätt att ändra.
-        var kanTilldela = User.IsInRole(DemoUserStore.RoleAdmin)
-            || User.IsInRole(DemoUserStore.RolePlantbas);
-        if (!kanTilldela && User.IsInRole(DemoUserStore.RolePlantsattare))
+        var kanTilldela = User.IsInRole(AppRoles.Admin)
+            || User.IsInRole(AppRoles.Plantbas);
+        if (!kanTilldela && User.IsInRole(AppRoles.Plantsattare))
         {
             var currentUser = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             var agare = delOmrade.TilldeladAnvandare;

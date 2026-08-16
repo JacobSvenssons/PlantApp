@@ -7,6 +7,9 @@ public class Trakt
 {
     public int Id { get; set; }
 
+    /// <summary>Organisationen (tenant) som trakten tillhör.</summary>
+    public int OrganisationId { get; set; }
+
     public required string Namn { get; set; }
 
     public DateTime SkapadDatum { get; set; }

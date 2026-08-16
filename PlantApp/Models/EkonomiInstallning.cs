@@ -9,6 +9,9 @@ public class EkonomiInstallning
 {
 	public int Id { get; set; }
 
+	/// <summary>Organisationen (tenant) som inställningen tillhör.</summary>
+	public int OrganisationId { get; set; }
+
 	/// <summary>Standardersättningsform som gäller när trakt/delområde inte satt en egen.</summary>
 	public ErsattningsTyp StandardErsattningsTyp { get; set; } = ErsattningsTyp.HelAckord;
 }

@@ -54,7 +54,8 @@ public sealed class PersistentAuthenticationStateProvider : AuthenticationStateP
             var name = principal.FindFirst(ClaimTypes.Name)?.Value ?? principal.Identity.Name ?? string.Empty;
             var userName = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? name;
             var roles = principal.FindAll(ClaimTypes.Role).Select(c => c.Value).ToArray();
-            _state.PersistAsJson(PersistenceKey, new UserInfo(name, userName, roles));
+            var organisationId = principal.FindFirst(TenantProvider.OrganisationClaimType)?.Value;
+            _state.PersistAsJson(PersistenceKey, new UserInfo(name, userName, roles, organisationId));
         }
     }
 
@@ -66,6 +67,10 @@ public sealed class PersistentAuthenticationStateProvider : AuthenticationStateP
             new(ClaimTypes.NameIdentifier, userInfo.UserName)
         };
         claims.AddRange(userInfo.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
+        if (!string.IsNullOrEmpty(userInfo.OrganisationId))
+        {
+            claims.Add(new Claim(TenantProvider.OrganisationClaimType, userInfo.OrganisationId));
+        }
 
         var identity = new ClaimsIdentity(claims, AuthenticationType, ClaimTypes.Name, ClaimTypes.Role);
         return new ClaimsPrincipal(identity);
@@ -73,5 +78,5 @@ public sealed class PersistentAuthenticationStateProvider : AuthenticationStateP
 
     public void Dispose() => _subscription?.Dispose();
 
-    private sealed record UserInfo(string Name, string UserName, string[] Roles);
+    private sealed record UserInfo(string Name, string UserName, string[] Roles, string? OrganisationId);
 }

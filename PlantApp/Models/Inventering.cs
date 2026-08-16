@@ -10,6 +10,9 @@ public class Inventering
 {
 	public int Id { get; set; }
 
+	/// <summary>Organisationen (tenant) som inventeringen tillhör.</summary>
+	public int OrganisationId { get; set; }
+
 	public int TraktId { get; set; }
 
 	/// <summary>När omgången skapades/påbörjades.</summary>

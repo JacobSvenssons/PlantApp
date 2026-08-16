@@ -6,7 +6,7 @@
 @using PlantApp.Services
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
-@inject DemoUserStore DemoUserStore
+@inject UserDirectory UserDirectory
 @attribute [Authorize(Roles = "Admin,Inventerare")]
 
 <PageTitle>Inventeringar</PageTitle>
@@ -71,7 +71,7 @@
         {
             var user = (await AuthState).User;
             currentUser = user.Identity?.Name;
-            isAdmin = user.IsInRole(DemoUserStore.RoleAdmin);
+            isAdmin = user.IsInRole(AppRoles.Admin);
         }
 
         try

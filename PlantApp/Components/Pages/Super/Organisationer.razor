@@ -1,0 +1,191 @@
+@page "/super/organisationer"
+@rendermode InteractiveServer
+@using PlantApp.Services
+@attribute [Authorize(Roles = "SuperAdmin")]
+@inject UserDirectory UserDirectory
+
+<PageTitle>PlantApp – Organisationer</PageTitle>
+
+<div class="org-page">
+	<div class="org-card card-soft">
+		<div class="org-card__header">
+			<div class="org-card__brand">
+				<span class="org-card__logo" aria-hidden="true">🏢</span>
+				<div>
+					<h1 class="org-card__titel">Organisationer</h1>
+					<p class="org-card__subtitel">Skapa och hantera företag/organisationer och deras första admin.</p>
+				</div>
+			</div>
+			<a class="btn-pill btn-pill--ghost" href="/">Till start</a>
+		</div>
+
+		@if (_message is not null)
+		{
+			<div class="org-melding org-melding--ok">@_message</div>
+		}
+		@if (_errors.Count > 0)
+		{
+			<div class="org-melding org-melding--fel">
+				<ul>
+					@foreach (var fel in _errors)
+					{
+						<li>@fel</li>
+					}
+				</ul>
+			</div>
+		}
+
+		<section class="org-ny">
+			<h2 class="org-ny__rubrik">Lägg till organisation</h2>
+			<div class="org-ny__rad">
+				<div class="org-falt">
+					<label for="org-namn">Organisationsnamn</label>
+					<input id="org-namn" class="org-input" @bind="_nyttNamn" placeholder="T.ex. Skog & Plant AB" />
+				</div>
+				<div class="org-falt">
+					<label for="admin-namn">Admin – namn</label>
+					<input id="admin-namn" class="org-input" @bind="_adminNamn" placeholder="Anna Admin" />
+				</div>
+				<div class="org-falt">
+					<label for="admin-epost">Admin – e-post</label>
+					<input id="admin-epost" type="email" class="org-input" @bind="_adminEpost" placeholder="anna@foretag.se" />
+				</div>
+				<div class="org-falt">
+					<label for="admin-losen">Admin – lösenord</label>
+					<input id="admin-losen" type="text" class="org-input" @bind="_adminLosenord" placeholder="Minst 6 tecken" />
+				</div>
+				<button class="btn-pill" @onclick="SkapaAsync" disabled="@_arbetar">Skapa</button>
+			</div>
+		</section>
+
+		@if (_orgs is null)
+		{
+			<div class="org-melding">Laddar organisationer…</div>
+		}
+		else if (_orgs.Count == 0)
+		{
+			<div class="org-melding">Inga organisationer finns ännu.</div>
+		}
+		else
+		{
+			<table class="tabell">
+				<thead>
+					<tr>
+						<th>Organisation</th>
+						<th class="tabell__num">Användare</th>
+						<th>Skapad</th>
+						<th>Status</th>
+						<th class="tabell__actions">Åtgärd</th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var org in _orgs)
+					{
+						<tr class="@(org.ArAktiv ? "" : "org-rad--inaktiv")">
+							<td>@org.Namn</td>
+							<td class="tabell__num">@org.AntalAnvandare</td>
+							<td>@org.SkapadDatum.ToLocalTime().ToString("yyyy-MM-dd")</td>
+							<td>
+								@if (org.ArAktiv)
+								{
+									<span class="org-status org-status--aktiv">Aktiv</span>
+								}
+								else
+								{
+									<span class="org-status org-status--inaktiv">Inaktiv</span>
+								}
+							</td>
+							<td class="tabell__actions">
+								@if (org.ArAktiv)
+								{
+									<button class="btn-pill btn-pill--ghost btn-pill--sm"
+											@onclick="() => SattAktivAsync(org.Id, false)" disabled="@_arbetar">
+										Inaktivera
+									</button>
+								}
+								else
+								{
+									<button class="btn-pill btn-pill--ghost btn-pill--sm"
+											@onclick="() => SattAktivAsync(org.Id, true)" disabled="@_arbetar">
+										Återaktivera
+									</button>
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		}
+	</div>
+</div>
+
+@code {
+	private IReadOnlyList<UserDirectory.OrganisationInfo>? _orgs;
+
+	private string _nyttNamn = "";
+	private string _adminNamn = "";
+	private string _adminEpost = "";
+	private string _adminLosenord = "";
+
+	private string? _message;
+	private List<string> _errors = new();
+	private bool _arbetar;
+
+	protected override async Task OnInitializedAsync() => await LaddaAsync();
+
+	private async Task LaddaAsync() => _orgs = await UserDirectory.ListaOrganisationerAsync();
+
+	private async Task SkapaAsync()
+	{
+		Rensa();
+		_arbetar = true;
+		try
+		{
+			var fel = await UserDirectory.SkapaOrganisationAsync(_nyttNamn, _adminEpost, _adminNamn, _adminLosenord);
+			if (fel.Count > 0)
+			{
+				_errors = fel.ToList();
+				return;
+			}
+
+			_message = $"Organisationen \"{_nyttNamn}\" skapades med admin \"{_adminEpost}\".";
+			_nyttNamn = "";
+			_adminNamn = "";
+			_adminEpost = "";
+			_adminLosenord = "";
+			await LaddaAsync();
+		}
+		finally
+		{
+			_arbetar = false;
+		}
+	}
+
+	private async Task SattAktivAsync(int organisationId, bool aktiv)
+	{
+		Rensa();
+		_arbetar = true;
+		try
+		{
+			if (await UserDirectory.SattOrganisationAktivAsync(organisationId, aktiv))
+			{
+				_message = aktiv ? "Organisationen återaktiverades." : "Organisationen inaktiverades.";
+				await LaddaAsync();
+			}
+			else
+			{
+				_errors = ["Kunde inte uppdatera organisationen."];
+			}
+		}
+		finally
+		{
+			_arbetar = false;
+		}
+	}
+
+	private void Rensa()
+	{
+		_message = null;
+		_errors = new();
+	}
+}

@@ -10,6 +10,9 @@ public class DelOmrade
 {
     public int Id { get; set; }
 
+    /// <summary>Organisationen (tenant) som delområdet tillhör.</summary>
+    public int OrganisationId { get; set; }
+
     public int TraktId { get; set; }
 
     /// <summary>

@@ -9,7 +9,7 @@
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
-@inject DemoUserStore DemoUserStore
+@inject UserDirectory UserDirectory
 @implements IAsyncDisposable
 
 <PageTitle>PlantApp – Ekonomi</PageTitle>
@@ -413,7 +413,7 @@
             .Select(g => new PersonSammanstallning
             {
                 Anvandare = g.Key,
-                Namn = DemoUserStore.GetDisplayName(g.Key),
+                Namn = UserDirectory.GetDisplayName(g.Key),
                 TotaltAntalPlantor = g.Sum(r => r.AntalPlantor),
                 AntalTrakter = g.Select(r => r.TraktId).Distinct().Count(),
                 Trakter = g
@@ -440,7 +440,7 @@
                 person = new PersonSammanstallning
                 {
                     Anvandare = tim.Anvandare,
-                    Namn = DemoUserStore.GetDisplayName(tim.Anvandare)
+                    Namn = UserDirectory.GetDisplayName(tim.Anvandare)
                 };
                 personer[tim.Anvandare] = person;
             }

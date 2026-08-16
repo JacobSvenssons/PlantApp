@@ -1,14 +1,23 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using PlantApp.Models;
+using PlantApp.Services;
 
 namespace PlantApp.Data;
 
-public class PlantAppDbContext : DbContext
+public class PlantAppDbContext : IdentityDbContext<AppUser>
 {
-    public PlantAppDbContext(DbContextOptions<PlantAppDbContext> options)
+    private readonly ITenantProvider _tenantProvider;
+
+    public PlantAppDbContext(DbContextOptions<PlantAppDbContext> options, ITenantProvider tenantProvider)
         : base(options)
     {
+        _tenantProvider = tenantProvider;
     }
+
+    public DbSet<Organisation> Organisationer => Set<Organisation>();
 
     public DbSet<Trakt> Trakter => Set<Trakt>();
 
@@ -28,11 +37,44 @@ public class PlantAppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<Organisation>(entity =>
+        {
+            entity.ToTable("Organisationer");
+            entity.HasKey(o => o.Id);
+            entity.Property(o => o.Namn)
+                  .IsRequired()
+                  .HasMaxLength(200);
+            entity.Property(o => o.SkapadDatum).IsRequired();
+            entity.Property(o => o.ArAktiv).IsRequired();
+        });
+
+        // --- Multi-tenant global query filters ---
+        // Super-admin (OrganisationId == null) släpper igenom alla organisationers data.
+        // Övriga ser bara sin egen organisation. AppUser filtreras också; UserDirectory
+        // använder IgnoreQueryFilters() där super-admin/seed behöver se över gränser.
+        modelBuilder.Entity<AppUser>()
+            .HasQueryFilter(u => _tenantProvider.OrganisationId == null || u.OrganisationId == _tenantProvider.OrganisationId);
+        modelBuilder.Entity<Trakt>()
+            .HasQueryFilter(t => _tenantProvider.OrganisationId == null || t.OrganisationId == _tenantProvider.OrganisationId);
+        modelBuilder.Entity<DelOmrade>()
+            .HasQueryFilter(d => _tenantProvider.OrganisationId == null || d.OrganisationId == _tenantProvider.OrganisationId);
+        modelBuilder.Entity<Inventering>()
+            .HasQueryFilter(i => _tenantProvider.OrganisationId == null || i.OrganisationId == _tenantProvider.OrganisationId);
+        modelBuilder.Entity<Tidrapport>()
+            .HasQueryFilter(t => _tenantProvider.OrganisationId == null || t.OrganisationId == _tenantProvider.OrganisationId);
+        modelBuilder.Entity<EkonomiInstallning>()
+            .HasQueryFilter(e => _tenantProvider.OrganisationId == null || e.OrganisationId == _tenantProvider.OrganisationId);
+
         modelBuilder.Entity<Trakt>(entity =>
         {
             entity.ToTable("Trakter");
 
             entity.HasKey(t => t.Id);
+
+            entity.Property(t => t.OrganisationId)
+                  .IsRequired();
+
+            entity.HasIndex(t => t.OrganisationId);
 
             entity.Property(t => t.Namn)
                   .IsRequired()
@@ -72,6 +114,11 @@ public class PlantAppDbContext : DbContext
             entity.ToTable("DelOmraden");
 
             entity.HasKey(d => d.Id);
+
+            entity.Property(d => d.OrganisationId)
+                  .IsRequired();
+
+            entity.HasIndex(d => d.OrganisationId);
 
             entity.Property(d => d.Areal)
                   .IsRequired();
@@ -144,6 +191,11 @@ public class PlantAppDbContext : DbContext
 
             entity.HasKey(i => i.Id);
 
+            entity.Property(i => i.OrganisationId)
+                  .IsRequired();
+
+            entity.HasIndex(i => i.OrganisationId);
+
             entity.Property(i => i.SkapadDatum)
                   .IsRequired();
 
@@ -193,18 +245,19 @@ public class PlantAppDbContext : DbContext
 
             entity.HasKey(e => e.Id);
 
+            entity.Property(e => e.OrganisationId)
+                  .IsRequired();
+
+            entity.HasIndex(e => e.OrganisationId)
+                  .IsUnique();
+
             // Lagra enum som läsbar text i databasen i stället för int.
             entity.Property(e => e.StandardErsattningsTyp)
                   .IsRequired()
                   .HasConversion<string>()
                   .HasMaxLength(20);
 
-            // Enradstabell: seeda den globala standarden (Id = 1).
-            entity.HasData(new EkonomiInstallning
-            {
-                Id = 1,
-                StandardErsattningsTyp = ErsattningsTyp.HelAckord
-            });
+            // En rad per organisation seedas när organisationen skapas (inte här).
         });
 
         modelBuilder.Entity<Tidrapport>(entity =>
@@ -212,6 +265,11 @@ public class PlantAppDbContext : DbContext
             entity.ToTable("Tidrapporter");
 
             entity.HasKey(t => t.Id);
+
+            entity.Property(t => t.OrganisationId)
+                  .IsRequired();
+
+            entity.HasIndex(t => t.OrganisationId);
 
             entity.Property(t => t.Anvandare)
                   .IsRequired()
@@ -243,5 +301,59 @@ public class PlantAppDbContext : DbContext
 
             entity.HasIndex(t => new { t.Anvandare, t.VeckoStart });
         });
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        StampaOrganisation();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        StampaOrganisation();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    /// <summary>
+    /// Stämplar automatiskt aktuell organisation på nya tenant-ägda rader som ännu
+    /// saknar en (OrganisationId == 0). Super-admin (null tenant) måste sätta
+    /// OrganisationId explicit innan spar.
+    /// </summary>
+    private void StampaOrganisation()
+    {
+        var tenantId = _tenantProvider.OrganisationId;
+        if (tenantId is null)
+        {
+            return;
+        }
+
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            if (entry.State != EntityState.Added)
+            {
+                continue;
+            }
+
+            switch (entry.Entity)
+            {
+                case Trakt t when t.OrganisationId == 0:
+                    t.OrganisationId = tenantId.Value;
+                    break;
+                case DelOmrade d when d.OrganisationId == 0:
+                    d.OrganisationId = tenantId.Value;
+                    break;
+                case Inventering i when i.OrganisationId == 0:
+                    i.OrganisationId = tenantId.Value;
+                    break;
+                case Tidrapport tr when tr.OrganisationId == 0:
+                    tr.OrganisationId = tenantId.Value;
+                    break;
+                case EkonomiInstallning e when e.OrganisationId == 0:
+                    e.OrganisationId = tenantId.Value;
+                    break;
+            }
+        }
     }
 }

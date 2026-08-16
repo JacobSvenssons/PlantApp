@@ -7,7 +7,7 @@
 @inject IJSRuntime JS
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
-@inject DemoUserStore DemoUserStore
+@inject UserDirectory UserDirectory
 @implements IAsyncDisposable
 
 <PageTitle>Trakt @TraktId</PageTitle>
@@ -137,7 +137,7 @@
 			@if (!KanRedigeraRuta)
 			{
 				<div class="rapport-panel__las">
-					🔒 Rutan är tilldelad @DemoUserStore.GetDisplayName(_tilldeladAnvandare) och kan bara ändras av den plantören.
+					🔒 Rutan är tilldelad @UserDirectory.GetDisplayName(_tilldeladAnvandare) och kan bara ändras av den plantören.
 				</div>
 			}
 
@@ -235,7 +235,7 @@
 			{
 				<div class="falt">
 					<label>Tilldelad</label>
-					<div class="falt__varde">@DemoUserStore.GetDisplayName(_tilldeladAnvandare)</div>
+					<div class="falt__varde">@UserDirectory.GetDisplayName(_tilldeladAnvandare)</div>
 				</div>
 			}
 
@@ -347,7 +347,7 @@
 	private bool _kanAndraTradsort;
 	private bool _kanAndraMal;
 	private bool _kanSeAvvikelser;
-	private IReadOnlyList<DemoUserStore.DemoUser> _appointableUsers = [];
+	private IReadOnlyList<UserDirectory.AppUserInfo> _appointableUsers = [];
 	private string? _traktStandardTradsort;
 	private bool _sparTraktTradsort;
 	private int? _traktMalPlantorPerHektar;
@@ -359,22 +359,22 @@
 
 	protected override async Task OnInitializedAsync()
 	{
-		_appointableUsers = DemoUserStore.GetAppointableUsers();
+		_appointableUsers = UserDirectory.GetAppointableUsers();
 
 		if (AuthState is not null)
 		{
 			var user = (await AuthState).User;
-			_isAdmin = user.IsInRole(DemoUserStore.RoleAdmin);
-			_isPlantsattare = user.IsInRole(DemoUserStore.RolePlantsattare);
+			_isAdmin = user.IsInRole(AppRoles.Admin);
+			_isPlantsattare = user.IsInRole(AppRoles.Plantsattare);
 			_currentUser = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 			// Admin och plantbas får tilldela rutor till fältpersonal.
-			_kanTilldela = _isAdmin || user.IsInRole(DemoUserStore.RolePlantbas);
+			_kanTilldela = _isAdmin || user.IsInRole(AppRoles.Plantbas);
 			// Trädslag sätts av admin/plantbas; plantsättare ser det bara.
-			_kanAndraTradsort = _isAdmin || user.IsInRole(DemoUserStore.RolePlantbas);
+			_kanAndraTradsort = _isAdmin || user.IsInRole(AppRoles.Plantbas);
 			// Mål plantor/ha sätts av admin/plantbas; plantsättare ser det bara.
-			_kanAndraMal = _isAdmin || user.IsInRole(DemoUserStore.RolePlantbas);
+			_kanAndraMal = _isAdmin || user.IsInRole(AppRoles.Plantbas);
 			// Avvikelse-sammanfattningen är ett översiktsverktyg för admin/plantbas.
-			_kanSeAvvikelser = _isAdmin || user.IsInRole(DemoUserStore.RolePlantbas);
+			_kanSeAvvikelser = _isAdmin || user.IsInRole(AppRoles.Plantbas);
 		}
 	}
 

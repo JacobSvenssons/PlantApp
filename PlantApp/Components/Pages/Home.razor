@@ -227,11 +227,11 @@
         if (AuthState is not null)
         {
             var user = (await AuthState).User;
-            _isAdmin = user.IsInRole(DemoUserStore.RoleAdmin);
+            _isAdmin = user.IsInRole(AppRoles.Admin);
             // Avvikelser är ett översiktsverktyg för admin/plantbas.
-            _kanSeAvvikelser = _isAdmin || user.IsInRole(DemoUserStore.RolePlantbas);
+            _kanSeAvvikelser = _isAdmin || user.IsInRole(AppRoles.Plantbas);
             // Inventeringsvyn visas för inventerare och admin.
-            _kanInventera = _isAdmin || user.IsInRole(DemoUserStore.RoleInventerare);
+            _kanInventera = _isAdmin || user.IsInRole(AppRoles.Inventerare);
         }
 
         try
