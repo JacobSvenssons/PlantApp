@@ -1,19 +1,20 @@
 ﻿@page "/"
 @rendermode InteractiveServer
+@attribute [Authorize]
 @using System.Net.Http.Json
 @using PlantApp.Models
 @using PlantApp.Services
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
-<PageTitle>PlantApp – Välj trakt</PageTitle>
+<PageTitle>Hyggligt – Välj trakt</PageTitle>
 
 <div class="start-page">
     <div class="start-card card-soft">
         <div class="start-card__brand">
             <span class="start-card__logo" aria-hidden="true">🌲</span>
             <div>
-                <h1 class="start-card__titel">PlantApp</h1>
+                <h1 class="start-card__titel">Hyggligt</h1>
                 <p class="start-card__subtitel">
                     @(_vy == Vy.Inventering
                         ? "Välj en omgång för att öppna inventeringen."

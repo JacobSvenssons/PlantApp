@@ -80,37 +80,3 @@
     background: #fbe9e9;
     color: #9b1c1c;
 }
-
-.login-demo {
-    margin-top: 1.75rem;
-    padding-top: 1.25rem;
-    border-top: 1px solid var(--color-border);
-}
-
-.login-demo__rubrik {
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: var(--color-text-muted);
-    margin-bottom: 0.5rem;
-}
-
-.login-demo__lista {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    font-size: 0.85rem;
-    color: var(--color-text-muted);
-}
-
-.login-demo__lista code {
-    background: rgba(31, 77, 46, 0.08);
-    padding: 0.1rem 0.35rem;
-    border-radius: 4px;
-    color: var(--color-text);
-}

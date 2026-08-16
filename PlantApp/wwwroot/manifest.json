@@ -1,6 +1,6 @@
 {
-  "name": "Skogsappen",
-  "short_name": "Skogsvård",
+  "name": "Hyggligt",
+  "short_name": "Hyggligt",
   "description": "Skogsvård och inventering – med offlinestöd för fältarbete utan täckning.",
   "start_url": "./",
   "scope": "./",

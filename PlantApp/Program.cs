@@ -101,8 +101,8 @@ if (app.Environment.IsDevelopment())
     db.Database.Migrate();
 }
 
-// Seeda roller och demokonton (idempotent) samt fyll användarkatalogens cache.
-await SeedIdentityAsync(app.Services, app.Environment.IsDevelopment());
+// Seeda roller och super-admin (idempotent) samt fyll användarkatalogens cache.
+await SeedIdentityAsync(app.Services);
 
 // Configure the HTTP request pipeline.
 // Måste ligga tidigast av allt så att efterföljande middleware ser rätt schema/host
@@ -143,8 +143,8 @@ app.MapRazorComponents<App>()
 
 app.Run();
 
-// --- Seedning av Identity-roller, super-admin och (i Development) demokonton (idempotent) ---
-static async Task SeedIdentityAsync(IServiceProvider services, bool isDevelopment)
+// --- Seedning av Identity-roller och super-admin (idempotent) ---
+static async Task SeedIdentityAsync(IServiceProvider services)
 {
     using var scope = services.CreateScope();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
@@ -160,7 +160,7 @@ static async Task SeedIdentityAsync(IServiceProvider services, bool isDevelopmen
         }
     }
 
-    // Standardorganisation som befintlig data (migrerad) och demokonton hör till.
+    // Standardorganisation som befintlig data (migrerad) hör till.
     var standardOrg = await db.Organisationer.FirstOrDefaultAsync(o => o.Namn == "Standardorganisation");
     if (standardOrg is null)
     {
@@ -202,44 +202,6 @@ static async Task SeedIdentityAsync(IServiceProvider services, bool isDevelopmen
         if (superResult.Succeeded)
         {
             await userManager.AddToRoleAsync(superAdmin, AppRoles.SuperAdmin);
-        }
-    }
-
-    // Demokonton seedas endast i Development, kopplade till Standardorganisationen.
-    if (isDevelopment)
-    {
-        (string Email, string Password, string DisplayName, string Role)[] demoUsers =
-        [
-            ("admin@standard.local", "admin123", "Jonas Admin", AppRoles.Admin),
-            ("plantbas@standard.local", "plantbas123", "Bengt Bas", AppRoles.Plantbas),
-            ("peter@standard.local", "plantor123", "Peter Plant", AppRoles.Plantsattare),
-            ("tina@standard.local", "plantor123", "Tina Träd", AppRoles.Plantsattare),
-            ("inventerare@standard.local", "invent123", "Inger Inventerare", AppRoles.Inventerare),
-        ];
-
-        foreach (var (email, password, displayName, role) in demoUsers)
-        {
-            if (await userManager.FindByEmailAsync(email) is not null)
-            {
-                continue;
-            }
-
-            var user = new AppUser
-            {
-                UserName = email,
-                Email = email,
-                DisplayName = displayName,
-                Roll = role,
-                OrganisationId = standardOrg.Id,
-                ArAktiv = true,
-                SkapadDatum = DateTime.UtcNow,
-            };
-
-            var result = await userManager.CreateAsync(user, password);
-            if (result.Succeeded)
-            {
-                await userManager.AddToRoleAsync(user, role);
-            }
         }
     }
 

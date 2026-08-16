@@ -183,7 +183,26 @@ public sealed class UserDirectory
             SkapadDatum = DateTime.UtcNow,
         };
 
-        var result = await userManager.CreateAsync(user, password);
+        // En användare med samma e-post kan finnas i en annan organisation (eller vara
+        // bortfiltrerad av tenant-query-filtret), vilket gör att Identity inte upptäcker
+        // dubbletten och databasens unika index i stället kastar. Kontrollera explicit och
+        // fånga eventuellt kvarstående databasfel så att sidan inte kraschar.
+        if (await userManager.Users.IgnoreQueryFilters()
+                .AnyAsync(u => u.NormalizedEmail == userManager.NormalizeEmail(email.Trim())))
+        {
+            return ["En användare med den e-postadressen finns redan."];
+        }
+
+        IdentityResult result;
+        try
+        {
+            result = await userManager.CreateAsync(user, password);
+        }
+        catch (DbUpdateException)
+        {
+            return ["En användare med den e-postadressen finns redan."];
+        }
+
         if (!result.Succeeded)
         {
             return result.Errors.Select(e => e.Description).ToList();
