@@ -99,31 +99,44 @@ namespace PlantApp.Migrations
                 column: "OrganisationId");
 
             // Data-migration: koppla befintlig data till en Standardorganisation så inget
-            // blir föräldralöst (OrganisationId = 0). Skapar organisationen om den saknas,
-            // backfyller alla tenant-ägda tabeller och säkerställer en ekonomiinställning.
+            // blir föräldralöst (OrganisationId = 0). Organisationen skapas ENDAST om det
+            // faktiskt finns föräldralös data att backfilla – på en tom databas skapas
+            // ingen Standardorganisation.
             migrationBuilder.Sql(@"
                 DECLARE @orgId int;
+                DECLARE @behoverOrg bit = 0;
 
-                IF NOT EXISTS (SELECT 1 FROM [Organisationer] WHERE [Namn] = N'Standardorganisation')
+                IF EXISTS (SELECT 1 FROM [Trakter]       WHERE [OrganisationId] = 0)
+                   OR EXISTS (SELECT 1 FROM [DelOmraden]    WHERE [OrganisationId] = 0)
+                   OR EXISTS (SELECT 1 FROM [Inventeringar] WHERE [OrganisationId] = 0)
+                   OR EXISTS (SELECT 1 FROM [Tidrapporter]  WHERE [OrganisationId] = 0)
+                   OR EXISTS (SELECT 1 FROM [EkonomiInstallningar] WHERE [OrganisationId] = 0)
+                   OR EXISTS (SELECT 1 FROM [AspNetUsers]   WHERE [OrganisationId] IS NULL AND ([Roll] IS NULL OR [Roll] <> N'SuperAdmin'))
+                    SET @behoverOrg = 1;
+
+                IF @behoverOrg = 1
                 BEGIN
-                    INSERT INTO [Organisationer] ([Namn], [SkapadDatum], [ArAktiv])
-                    VALUES (N'Standardorganisation', SYSUTCDATETIME(), 1);
-                END
+                    IF NOT EXISTS (SELECT 1 FROM [Organisationer] WHERE [Namn] = N'Standardorganisation')
+                    BEGIN
+                        INSERT INTO [Organisationer] ([Namn], [SkapadDatum], [ArAktiv])
+                        VALUES (N'Standardorganisation', SYSUTCDATETIME(), 1);
+                    END
 
-                SELECT @orgId = [Id] FROM [Organisationer] WHERE [Namn] = N'Standardorganisation';
+                    SELECT @orgId = [Id] FROM [Organisationer] WHERE [Namn] = N'Standardorganisation';
 
-                UPDATE [Trakter]       SET [OrganisationId] = @orgId WHERE [OrganisationId] = 0;
-                UPDATE [DelOmraden]    SET [OrganisationId] = @orgId WHERE [OrganisationId] = 0;
-                UPDATE [Inventeringar] SET [OrganisationId] = @orgId WHERE [OrganisationId] = 0;
-                UPDATE [Tidrapporter]  SET [OrganisationId] = @orgId WHERE [OrganisationId] = 0;
-                UPDATE [EkonomiInstallningar] SET [OrganisationId] = @orgId WHERE [OrganisationId] = 0;
-                UPDATE [AspNetUsers]   SET [OrganisationId] = @orgId
-                    WHERE [OrganisationId] IS NULL AND ([Roll] IS NULL OR [Roll] <> N'SuperAdmin');
+                    UPDATE [Trakter]       SET [OrganisationId] = @orgId WHERE [OrganisationId] = 0;
+                    UPDATE [DelOmraden]    SET [OrganisationId] = @orgId WHERE [OrganisationId] = 0;
+                    UPDATE [Inventeringar] SET [OrganisationId] = @orgId WHERE [OrganisationId] = 0;
+                    UPDATE [Tidrapporter]  SET [OrganisationId] = @orgId WHERE [OrganisationId] = 0;
+                    UPDATE [EkonomiInstallningar] SET [OrganisationId] = @orgId WHERE [OrganisationId] = 0;
+                    UPDATE [AspNetUsers]   SET [OrganisationId] = @orgId
+                        WHERE [OrganisationId] IS NULL AND ([Roll] IS NULL OR [Roll] <> N'SuperAdmin');
 
-                IF NOT EXISTS (SELECT 1 FROM [EkonomiInstallningar] WHERE [OrganisationId] = @orgId)
-                BEGIN
-                    INSERT INTO [EkonomiInstallningar] ([OrganisationId], [StandardErsattningsTyp])
-                    VALUES (@orgId, N'HelAckord');
+                    IF NOT EXISTS (SELECT 1 FROM [EkonomiInstallningar] WHERE [OrganisationId] = @orgId)
+                    BEGIN
+                        INSERT INTO [EkonomiInstallningar] ([OrganisationId], [StandardErsattningsTyp])
+                        VALUES (@orgId, N'HelAckord');
+                    END
                 END
             ");
         }

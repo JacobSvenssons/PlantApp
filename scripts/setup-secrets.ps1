@@ -23,7 +23,11 @@ param(
 $ErrorActionPreference = "Stop"
 
 # Sökväg till projektet relativt scriptets plats (fungerar oavsett var man står).
-$projekt = Join-Path $PSScriptRoot ".." "PlantApp" "PlantApp.csproj" | Resolve-Path
+# Byggs stegvis så det fungerar både i Windows PowerShell 5.1 och PowerShell 7+.
+$projekt = Join-Path $PSScriptRoot ".."
+$projekt = Join-Path $projekt "PlantApp"
+$projekt = Join-Path $projekt "PlantApp.csproj"
+$projekt = (Resolve-Path $projekt).Path
 
 if (-not $Email) {
 	$Email = Read-Host "Super-admin e-post"
